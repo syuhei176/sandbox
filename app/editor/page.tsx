@@ -163,6 +163,56 @@ end`,
     );
   };
 
+  const handleAddObject = () => {
+    const newId = `obj-${Date.now()}`;
+    const newObject: GameObject = {
+      id: newId,
+      name: "New GameObject",
+      transform: {
+        position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            geometry: "box",
+            color: 0x888888,
+            width: 1,
+            height: 1,
+            depth: 1,
+          },
+        },
+      ],
+    };
+    setGameObjects((prev) => [...prev, newObject]);
+    setSelectedObjectId(newId);
+  };
+
+  const handleDuplicateObject = (objectId: string) => {
+    const objectToDuplicate = gameObjects.find((obj) => obj.id === objectId);
+    if (!objectToDuplicate) return;
+
+    const newId = `obj-${Date.now()}`;
+    const duplicatedObject: GameObject = {
+      ...JSON.parse(JSON.stringify(objectToDuplicate)),
+      id: newId,
+      name: `${objectToDuplicate.name} Copy`,
+    };
+    setGameObjects((prev) => [...prev, duplicatedObject]);
+    setSelectedObjectId(newId);
+  };
+
+  const handleDeleteObject = (objectId: string) => {
+    if (confirm("Are you sure you want to delete this GameObject?")) {
+      setGameObjects((prev) => prev.filter((obj) => obj.id !== objectId));
+      if (selectedObjectId === objectId) {
+        setSelectedObjectId(null);
+      }
+    }
+  };
+
   const handleSaveProject = () => {
     if (projectName.trim()) {
       const project = createProject(projectName.trim(), gameObjects, scripts);
@@ -349,6 +399,9 @@ end`,
             gameObjects={gameObjects}
             selectedObjectId={selectedObjectId}
             onObjectSelect={handleObjectSelect}
+            onAddObject={handleAddObject}
+            onDuplicateObject={handleDuplicateObject}
+            onDeleteObject={handleDeleteObject}
           />
         </div>
 
