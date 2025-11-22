@@ -79,9 +79,38 @@ const outputFormatExample = `{
   ]
 }`;
 
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-900 text-zinc-100">
+      <nav className="sticky top-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <Link href="/" className="text-lg font-semibold text-white">
+            AI Game Platform
+          </Link>
+          <div className="flex gap-4 text-sm">
+            <Link
+              href="/editor"
+              className="rounded-lg px-4 py-2 text-emerald-400 transition hover:bg-emerald-400/10"
+            >
+              Editor
+            </Link>
+            <Link
+              href="/runtime"
+              className="rounded-lg px-4 py-2 text-blue-400 transition hover:bg-blue-400/10"
+            >
+              Runtime
+            </Link>
+            <a
+              href="#features"
+              className="rounded-lg px-4 py-2 text-zinc-300 transition hover:bg-white/5"
+            >
+              Features
+            </a>
+          </div>
+        </div>
+      </nav>
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-16 sm:px-10 lg:px-16">
         <section className="rounded-3xl border border-white/10 bg-white/5 p-10 backdrop-blur">
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
@@ -96,17 +125,23 @@ export default function Home() {
             ランタイムがプレイアブルなワールドを構築します。
           </p>
           <div className="mt-8 flex flex-wrap gap-4 text-sm font-medium">
-            <a
+            <Link
               className="rounded-full bg-emerald-400 px-6 py-3 text-black transition hover:bg-emerald-300"
-              href="#overview"
+              href="/editor"
             >
-              View Overview
-            </a>
+              Open Editor
+            </Link>
+            <Link
+              className="rounded-full bg-blue-500 px-6 py-3 text-white transition hover:bg-blue-400"
+              href="/runtime"
+            >
+              View Runtime
+            </Link>
             <a
               className="rounded-full border border-white/30 px-6 py-3 text-white transition hover:border-white"
-              href="#output-format"
+              href="#overview"
             >
-              Jump to Output JSON
+              Learn More
             </a>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -121,6 +156,72 @@ export default function Home() {
                 </p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section
+          id="features"
+          className="rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-950/20 to-zinc-950/60 p-10"
+        >
+          <h2 className="text-2xl font-semibold text-white">
+            エディタで3Dゲームを作成
+          </h2>
+          <p className="mt-4 text-zinc-300">
+            Unity風のビジュアルエディタで、直感的に3Dゲームを作成・編集できます。
+          </p>
+          <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+              <div className="mb-3 text-2xl">🎯</div>
+              <h3 className="text-sm font-semibold text-white">
+                シーンヒエラルキー
+              </h3>
+              <p className="mt-2 text-xs text-zinc-400">
+                GameObjectの階層構造を管理。追加・削除・複製が簡単。
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+              <div className="mb-3 text-2xl">🔧</div>
+              <h3 className="text-sm font-semibold text-white">
+                インスペクター
+              </h3>
+              <p className="mt-2 text-xs text-zinc-400">
+                Transform、コンポーネント、スクリプトをリアルタイム編集。
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+              <div className="mb-3 text-2xl">📐</div>
+              <h3 className="text-sm font-semibold text-white">
+                3Dビューポート
+              </h3>
+              <p className="mt-2 text-xs text-zinc-400">
+                three.jsによるリアルタイムプレビュー。変更がすぐに反映。
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+              <div className="mb-3 text-2xl">💾</div>
+              <h3 className="text-sm font-semibold text-white">
+                プロジェクト管理
+              </h3>
+              <p className="mt-2 text-xs text-zinc-400">
+                ローカル保存、エクスポート/インポート、上書き保存に対応。
+              </p>
+            </div>
+          </div>
+          <div className="mt-8 rounded-2xl border border-emerald-400/30 bg-emerald-950/20 p-6">
+            <h3 className="text-sm font-semibold text-emerald-300">
+              Luaスクリプティング
+            </h3>
+            <p className="mt-2 text-sm text-zinc-300">
+              各GameObjectにLuaスクリプトをアタッチして、`on_start()`と`on_update(dt)`で動的な挙動を実装できます。
+            </p>
+            <div className="mt-4 rounded-lg bg-black/60 p-4 font-mono text-xs text-emerald-200">
+              <div>function on_start()</div>
+              <div className="ml-4">print(&quot;GameObject started!&quot;)</div>
+              <div>end</div>
+              <div className="mt-2">function on_update(dt)</div>
+              <div className="ml-4">-- Update logic here</div>
+              <div>end</div>
+            </div>
           </div>
         </section>
 
