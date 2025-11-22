@@ -148,21 +148,21 @@ export default function RuntimePage() {
   const engineRef = useRef<GameEngine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [gameSpec, setGameSpec] = useState<GameSpec>(sampleGameSpec);
 
-  useEffect(() => {
-    // Try to load game spec from localStorage (from editor)
-    const storedGameSpec = localStorage.getItem("editorGameSpec");
-    if (storedGameSpec) {
-      try {
-        const parsedSpec = JSON.parse(storedGameSpec);
-        setGameSpec(parsedSpec);
-      } catch (err) {
-        console.error("Failed to parse stored game spec:", err);
-        // Fall back to sample game spec
+  // Initialize gameSpec from localStorage or use sample
+  const [gameSpec] = useState<GameSpec>(() => {
+    if (typeof window !== "undefined") {
+      const storedGameSpec = localStorage.getItem("editorGameSpec");
+      if (storedGameSpec) {
+        try {
+          return JSON.parse(storedGameSpec);
+        } catch (err) {
+          console.error("Failed to parse stored game spec:", err);
+        }
       }
     }
-  }, []);
+    return sampleGameSpec;
+  });
 
   useEffect(() => {
     if (!canvasRef.current) return;

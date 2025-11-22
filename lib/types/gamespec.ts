@@ -60,17 +60,17 @@ export interface Transform {
 
 export interface Component {
   type: ComponentType;
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
 }
 
 export type ComponentType =
-  | 'mesh'
-  | 'light'
-  | 'camera'
-  | 'collider'
-  | 'rigidbody'
-  | 'audio_source'
-  | 'particle_system';
+  | "mesh"
+  | "light"
+  | "camera"
+  | "collider"
+  | "rigidbody"
+  | "audio_source"
+  | "particle_system";
 
 export interface ScriptDefinition {
   id: string;

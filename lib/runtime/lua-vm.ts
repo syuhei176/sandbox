@@ -1,12 +1,19 @@
 import type { GameObject } from "../types/gamespec";
 
 export class LuaVM {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private fengari: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private lua: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private lauxlib: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private lualib: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private to_luastring: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private to_jsstring: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private L: any;
 
   constructor() {
@@ -121,6 +128,7 @@ export class LuaVM {
     this.lua.lua_settable(this.L, -3);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   callFunction(functionName: string, ...args: any[]): any {
     if (!this.L) return null;
 

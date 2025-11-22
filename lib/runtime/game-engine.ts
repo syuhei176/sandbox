@@ -182,28 +182,38 @@ export class GameEngine {
     component: Component,
   ): void {
     const props = component.properties;
+
+    // Helper to safely get numeric properties
+    const getNum = (key: string, defaultValue: number): number => {
+      const value = props[key];
+      return typeof value === "number" ? value : defaultValue;
+    };
+
     let geometry: THREE.BufferGeometry;
 
     // Create geometry based on type
     switch (props.geometry) {
       case "box":
         geometry = new THREE.BoxGeometry(
-          props.width || 1,
-          props.height || 1,
-          props.depth || 1,
+          getNum("width", 1),
+          getNum("height", 1),
+          getNum("depth", 1),
         );
         break;
       case "sphere":
-        geometry = new THREE.SphereGeometry(props.radius || 0.5, 32, 32);
+        geometry = new THREE.SphereGeometry(getNum("radius", 0.5), 32, 32);
         break;
       case "plane":
-        geometry = new THREE.PlaneGeometry(props.width || 1, props.height || 1);
+        geometry = new THREE.PlaneGeometry(
+          getNum("width", 1),
+          getNum("height", 1),
+        );
         break;
       case "cylinder":
         geometry = new THREE.CylinderGeometry(
-          props.radiusTop || 0.5,
-          props.radiusBottom || 0.5,
-          props.height || 1,
+          getNum("radiusTop", 0.5),
+          getNum("radiusBottom", 0.5),
+          getNum("height", 1),
           32,
         );
         break;
@@ -213,9 +223,9 @@ export class GameEngine {
 
     // Create material
     const material = new THREE.MeshStandardMaterial({
-      color: props.color || 0xffffff,
-      metalness: props.metalness || 0,
-      roughness: props.roughness || 0.5,
+      color: getNum("color", 0xffffff),
+      metalness: getNum("metalness", 0),
+      roughness: getNum("roughness", 0.5),
     });
 
     const mesh = new THREE.Mesh(geometry, material);
@@ -227,26 +237,33 @@ export class GameEngine {
     component: Component,
   ): void {
     const props = component.properties;
+
+    // Helper to safely get numeric properties
+    const getNum = (key: string, defaultValue: number): number => {
+      const value = props[key];
+      return typeof value === "number" ? value : defaultValue;
+    };
+
     let light: THREE.Light;
 
     switch (props.lightType) {
       case "point":
         light = new THREE.PointLight(
-          props.color || 0xffffff,
-          props.intensity || 1,
-          props.distance || 0,
+          getNum("color", 0xffffff),
+          getNum("intensity", 1),
+          getNum("distance", 0),
         );
         break;
       case "spot":
         light = new THREE.SpotLight(
-          props.color || 0xffffff,
-          props.intensity || 1,
+          getNum("color", 0xffffff),
+          getNum("intensity", 1),
         );
         break;
       case "directional":
         light = new THREE.DirectionalLight(
-          props.color || 0xffffff,
-          props.intensity || 1,
+          getNum("color", 0xffffff),
+          getNum("intensity", 1),
         );
         break;
       default:
@@ -261,11 +278,18 @@ export class GameEngine {
     component: Component,
   ): void {
     const props = component.properties;
+
+    // Helper to safely get numeric properties
+    const getNum = (key: string, defaultValue: number): number => {
+      const value = props[key];
+      return typeof value === "number" ? value : defaultValue;
+    };
+
     const camera = new THREE.PerspectiveCamera(
-      props.fov || 75,
-      props.aspect || 1,
-      props.near || 0.1,
-      props.far || 1000,
+      getNum("fov", 75),
+      getNum("aspect", 1),
+      getNum("near", 0.1),
+      getNum("far", 1000),
     );
     object3D.add(camera);
 

@@ -84,9 +84,6 @@ end`,
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
 
   const selectedObject = gameObjects.find((obj) => obj.id === selectedObjectId);
-  const selectedScript = scripts.find(
-    (script) => script.id === selectedScriptId,
-  );
 
   const handleObjectSelect = (objectId: string) => {
     setSelectedObjectId(objectId);

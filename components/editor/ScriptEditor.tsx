@@ -1,8 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import CodeEditor from '@uiw/react-textarea-code-editor';
-import type { ScriptDefinition } from '@/lib/types/gamespec';
+import CodeEditor from "@uiw/react-textarea-code-editor";
+import type { ScriptDefinition } from "@/lib/types/gamespec";
 
 interface ScriptEditorProps {
   scripts: ScriptDefinition[];
@@ -31,8 +30,8 @@ export function ScriptEditor({
               px-3 py-1 text-sm rounded-t transition-colors
               ${
                 script.id === selectedScriptId
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  ? "bg-gray-800 text-white"
+                  : "bg-gray-700 text-gray-400 hover:bg-gray-600"
               }
             `}
           >
@@ -52,11 +51,11 @@ export function ScriptEditor({
             padding={15}
             style={{
               fontSize: 13,
-              backgroundColor: '#1f2937',
+              backgroundColor: "#1f2937",
               fontFamily:
-                'ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace',
-              height: '100%',
-              overflow: 'auto',
+                "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+              height: "100%",
+              overflow: "auto",
             }}
             className="w-full h-full"
           />

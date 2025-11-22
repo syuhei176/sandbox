@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useRef, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
-import * as THREE from 'three';
-import type { GameObject } from '@/lib/types/gamespec';
+import { useRef, useEffect, type ReactElement } from "react";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, Grid } from "@react-three/drei";
+import * as THREE from "three";
+import type { GameObject } from "@/lib/types/gamespec";
 
 interface Viewport3DProps {
   gameObjects: GameObject[];
@@ -55,7 +55,10 @@ interface GameObjectRendererProps {
   isSelected: boolean;
 }
 
-function GameObjectRenderer({ gameObject, isSelected }: GameObjectRendererProps) {
+function GameObjectRenderer({
+  gameObject,
+  isSelected,
+}: GameObjectRendererProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
@@ -63,17 +66,17 @@ function GameObjectRenderer({ gameObject, isSelected }: GameObjectRendererProps)
       groupRef.current.position.set(
         gameObject.transform.position.x,
         gameObject.transform.position.y,
-        gameObject.transform.position.z
+        gameObject.transform.position.z,
       );
       groupRef.current.rotation.set(
         gameObject.transform.rotation.x,
         gameObject.transform.rotation.y,
-        gameObject.transform.rotation.z
+        gameObject.transform.rotation.z,
       );
       groupRef.current.scale.set(
         gameObject.transform.scale.x,
         gameObject.transform.scale.y,
-        gameObject.transform.scale.z
+        gameObject.transform.scale.z,
       );
     }
   }, [gameObject.transform]);
@@ -81,7 +84,7 @@ function GameObjectRenderer({ gameObject, isSelected }: GameObjectRendererProps)
   return (
     <group ref={groupRef}>
       {gameObject.components.map((component, index) => {
-        if (component.type === 'mesh') {
+        if (component.type === "mesh") {
           return (
             <MeshComponent
               key={index}
@@ -93,47 +96,53 @@ function GameObjectRenderer({ gameObject, isSelected }: GameObjectRendererProps)
         return null;
       })}
       {gameObject.children?.map((child) => (
-        <GameObjectRenderer key={child.id} gameObject={child} isSelected={false} />
+        <GameObjectRenderer
+          key={child.id}
+          gameObject={child}
+          isSelected={false}
+        />
       ))}
     </group>
   );
 }
 
 interface MeshComponentProps {
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
   isSelected: boolean;
 }
 
 function MeshComponent({ properties, isSelected }: MeshComponentProps) {
-  let geometry: JSX.Element;
+  // Helper to safely get numeric properties
+  const getNum = (key: string, defaultValue: number): number => {
+    const value = properties[key];
+    return typeof value === "number" ? value : defaultValue;
+  };
+
+  let geometry: ReactElement;
 
   switch (properties.geometry) {
-    case 'box':
+    case "box":
       geometry = (
         <boxGeometry
-          args={[
-            properties.width || 1,
-            properties.height || 1,
-            properties.depth || 1,
-          ]}
+          args={[getNum("width", 1), getNum("height", 1), getNum("depth", 1)]}
         />
       );
       break;
-    case 'sphere':
-      geometry = <sphereGeometry args={[properties.radius || 0.5, 32, 32]} />;
+    case "sphere":
+      geometry = <sphereGeometry args={[getNum("radius", 0.5), 32, 32]} />;
       break;
-    case 'plane':
+    case "plane":
       geometry = (
-        <planeGeometry args={[properties.width || 1, properties.height || 1]} />
+        <planeGeometry args={[getNum("width", 1), getNum("height", 1)]} />
       );
       break;
-    case 'cylinder':
+    case "cylinder":
       geometry = (
         <cylinderGeometry
           args={[
-            properties.radiusTop || 0.5,
-            properties.radiusBottom || 0.5,
-            properties.height || 1,
+            getNum("radiusTop", 0.5),
+            getNum("radiusBottom", 0.5),
+            getNum("height", 1),
             32,
           ]}
         />
@@ -143,9 +152,9 @@ function MeshComponent({ properties, isSelected }: MeshComponentProps) {
       geometry = <boxGeometry args={[1, 1, 1]} />;
   }
 
-  const color = properties.color ?? 0xffffff;
-  const metalness = properties.metalness ?? 0;
-  const roughness = properties.roughness ?? 0.5;
+  const color = getNum("color", 0xffffff);
+  const metalness = getNum("metalness", 0);
+  const roughness = getNum("roughness", 0.5);
 
   return (
     <mesh>
@@ -162,13 +171,13 @@ function MeshComponent({ properties, isSelected }: MeshComponentProps) {
           <edgesGeometry
             attach="geometry"
             args={[
-              properties.geometry === 'box'
+              properties.geometry === "box"
                 ? new THREE.BoxGeometry(
-                    properties.width || 1,
-                    properties.height || 1,
-                    properties.depth || 1
+                    getNum("width", 1),
+                    getNum("height", 1),
+                    getNum("depth", 1),
                   )
-                : new THREE.SphereGeometry(properties.radius || 0.5, 32, 32),
+                : new THREE.SphereGeometry(getNum("radius", 0.5), 32, 32),
             ]}
           />
           <lineBasicMaterial attach="material" color="#00ffff" />
