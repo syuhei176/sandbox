@@ -1,15 +1,16 @@
-'use client';
+"use client";
 
-import { useRef, useEffect, useState } from 'react';
-import { GameEngine } from '@/lib/runtime/game-engine';
-import type { GameSpec } from '@/lib/types/gamespec';
+import { useRef, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { GameEngine } from "@/lib/runtime/game-engine";
+import type { GameSpec } from "@/lib/types/gamespec";
 
 // Sample game spec for testing
 const sampleGameSpec: GameSpec = {
   meta: {
-    title: 'Sample 3D Game',
-    description: 'A simple rotating cube demo',
-    version: '1.0.0',
+    title: "Sample 3D Game",
+    description: "A simple rotating cube demo",
+    version: "1.0.0",
   },
   players: {
     min: 1,
@@ -21,24 +22,24 @@ const sampleGameSpec: GameSpec = {
   },
   worlds: [
     {
-      id: 'world-1',
-      name: 'Main World',
+      id: "world-1",
+      name: "Main World",
       environment: {
-        skybox: '#87ceeb',
+        skybox: "#87ceeb",
         ambient_light: {
-          color: '#ffffff',
+          color: "#ffffff",
           intensity: 0.5,
         },
         directional_light: {
-          color: '#ffffff',
+          color: "#ffffff",
           intensity: 0.8,
           position: { x: 10, y: 10, z: 5 },
         },
       },
       objects: [
         {
-          id: 'ground',
-          name: 'Ground',
+          id: "ground",
+          name: "Ground",
           transform: {
             position: { x: 0, y: 0, z: 0 },
             rotation: { x: 0, y: 0, z: 0 },
@@ -46,9 +47,9 @@ const sampleGameSpec: GameSpec = {
           },
           components: [
             {
-              type: 'mesh',
+              type: "mesh",
               properties: {
-                geometry: 'box',
+                geometry: "box",
                 color: 0x808080,
                 width: 1,
                 height: 1,
@@ -58,8 +59,8 @@ const sampleGameSpec: GameSpec = {
           ],
         },
         {
-          id: 'cube-1',
-          name: 'Rotating Cube',
+          id: "cube-1",
+          name: "Rotating Cube",
           transform: {
             position: { x: 0, y: 2, z: 0 },
             rotation: { x: 0, y: 0, z: 0 },
@@ -67,9 +68,9 @@ const sampleGameSpec: GameSpec = {
           },
           components: [
             {
-              type: 'mesh',
+              type: "mesh",
               properties: {
-                geometry: 'box',
+                geometry: "box",
                 color: 0xff6b6b,
                 width: 1,
                 height: 1,
@@ -77,11 +78,11 @@ const sampleGameSpec: GameSpec = {
               },
             },
           ],
-          script_id: 'rotate-script',
+          script_id: "rotate-script",
         },
         {
-          id: 'sphere-1',
-          name: 'Sphere',
+          id: "sphere-1",
+          name: "Sphere",
           transform: {
             position: { x: 3, y: 1.5, z: 0 },
             rotation: { x: 0, y: 0, z: 0 },
@@ -89,9 +90,9 @@ const sampleGameSpec: GameSpec = {
           },
           components: [
             {
-              type: 'mesh',
+              type: "mesh",
               properties: {
-                geometry: 'sphere',
+                geometry: "sphere",
                 color: 0x4ecdc4,
                 radius: 0.75,
               },
@@ -99,8 +100,8 @@ const sampleGameSpec: GameSpec = {
           ],
         },
         {
-          id: 'light-1',
-          name: 'Point Light',
+          id: "light-1",
+          name: "Point Light",
           transform: {
             position: { x: -3, y: 3, z: 2 },
             rotation: { x: 0, y: 0, z: 0 },
@@ -108,9 +109,9 @@ const sampleGameSpec: GameSpec = {
           },
           components: [
             {
-              type: 'light',
+              type: "light",
               properties: {
-                lightType: 'point',
+                lightType: "point",
                 color: 0xffe66d,
                 intensity: 1,
                 distance: 10,
@@ -123,8 +124,8 @@ const sampleGameSpec: GameSpec = {
   ],
   scripts: [
     {
-      id: 'rotate-script',
-      name: 'RotateCube',
+      id: "rotate-script",
+      name: "RotateCube",
       lua_code: `-- Rotate the cube over time
 local rotation_speed = 1.0
 
@@ -142,10 +143,26 @@ end`,
 };
 
 export default function RuntimePage() {
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [gameSpec, setGameSpec] = useState<GameSpec>(sampleGameSpec);
+
+  useEffect(() => {
+    // Try to load game spec from localStorage (from editor)
+    const storedGameSpec = localStorage.getItem("editorGameSpec");
+    if (storedGameSpec) {
+      try {
+        const parsedSpec = JSON.parse(storedGameSpec);
+        setGameSpec(parsedSpec);
+      } catch (err) {
+        console.error("Failed to parse stored game spec:", err);
+        // Fall back to sample game spec
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -158,13 +175,13 @@ export default function RuntimePage() {
         const engine = new GameEngine(canvasRef.current!);
         engineRef.current = engine;
 
-        await engine.loadGame(sampleGameSpec);
+        await engine.loadGame(gameSpec);
         engine.start();
 
         setIsLoading(false);
       } catch (err) {
-        console.error('Failed to initialize game:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error("Failed to initialize game:", err);
+        setError(err instanceof Error ? err.message : "Unknown error");
         setIsLoading(false);
       }
     };
@@ -178,7 +195,7 @@ export default function RuntimePage() {
         engineRef.current = null;
       }
     };
-  }, []);
+  }, [gameSpec]);
 
   // Handle window resize
   useEffect(() => {
@@ -190,8 +207,8 @@ export default function RuntimePage() {
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   return (
@@ -199,7 +216,7 @@ export default function RuntimePage() {
       <canvas
         ref={canvasRef}
         className="w-full h-full"
-        style={{ display: 'block' }}
+        style={{ display: "block" }}
       />
 
       {isLoading && (
@@ -217,10 +234,22 @@ export default function RuntimePage() {
         </div>
       )}
 
-      {/* Game Info Overlay */}
-      <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white p-3 rounded text-sm">
-        <h3 className="font-bold">{sampleGameSpec.meta.title}</h3>
-        <p className="text-xs text-gray-300">{sampleGameSpec.meta.description}</p>
+      {/* Top Bar with Back Button and Game Info */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+        <button
+          onClick={() => router.push("/editor")}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-800 bg-opacity-75 hover:bg-opacity-100 text-white rounded transition-all"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M10 2L4 8l6 6V2z" />
+          </svg>
+          Back to Editor
+        </button>
+
+        <div className="bg-black bg-opacity-50 text-white p-3 rounded text-sm">
+          <h3 className="font-bold">{gameSpec.meta.title}</h3>
+          <p className="text-xs text-gray-300">{gameSpec.meta.description}</p>
+        </div>
       </div>
 
       {/* Controls Info */}
