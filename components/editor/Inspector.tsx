@@ -126,11 +126,46 @@ export function Inspector({ selectedObject, onObjectUpdate }: InspectorProps) {
 
       {/* Transform */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Transform</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Transform</h3>
+          <div className="flex gap-1">
+            <button
+              onClick={() => {
+                onObjectUpdate(selectedObject.id, {
+                  transform: {
+                    position: { x: 0, y: 0, z: 0 },
+                    rotation: { x: 0, y: 0, z: 0 },
+                    scale: { x: 1, y: 1, z: 1 },
+                  },
+                });
+              }}
+              className="px-2 py-0.5 text-xs bg-gray-600 hover:bg-gray-500 rounded transition-colors"
+              title="Reset Transform"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
 
         {/* Position */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Position</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-gray-400">Position</label>
+            <button
+              onClick={() => {
+                onObjectUpdate(selectedObject.id, {
+                  transform: {
+                    ...selectedObject.transform,
+                    position: { x: 0, y: 0, z: 0 },
+                  },
+                });
+              }}
+              className="px-1 text-xs text-gray-500 hover:text-gray-300"
+              title="Reset Position"
+            >
+              ↺
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <Vector3Input
               label="X"
@@ -152,7 +187,23 @@ export function Inspector({ selectedObject, onObjectUpdate }: InspectorProps) {
 
         {/* Rotation */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Rotation</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-gray-400">Rotation</label>
+            <button
+              onClick={() => {
+                onObjectUpdate(selectedObject.id, {
+                  transform: {
+                    ...selectedObject.transform,
+                    rotation: { x: 0, y: 0, z: 0 },
+                  },
+                });
+              }}
+              className="px-1 text-xs text-gray-500 hover:text-gray-300"
+              title="Reset Rotation"
+            >
+              ↺
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <Vector3Input
               label="X"
@@ -174,7 +225,23 @@ export function Inspector({ selectedObject, onObjectUpdate }: InspectorProps) {
 
         {/* Scale */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Scale</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-gray-400">Scale</label>
+            <button
+              onClick={() => {
+                onObjectUpdate(selectedObject.id, {
+                  transform: {
+                    ...selectedObject.transform,
+                    scale: { x: 1, y: 1, z: 1 },
+                  },
+                });
+              }}
+              className="px-1 text-xs text-gray-500 hover:text-gray-300"
+              title="Reset Scale"
+            >
+              ↺
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <Vector3Input
               label="X"

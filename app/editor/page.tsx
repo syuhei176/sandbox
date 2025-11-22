@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { SceneHierarchy } from "@/components/editor/SceneHierarchy";
 import { Inspector } from "@/components/editor/Inspector";
@@ -194,28 +194,28 @@ end`,
     setSelectedObjectId(newId);
   };
 
-  const handleDuplicateObject = (objectId: string) => {
-    const objectToDuplicate = gameObjects.find((obj) => obj.id === objectId);
-    if (!objectToDuplicate) return;
+  const handleDuplicateObject = useCallback((objectId: string) => {
+    setGameObjects((prev) => {
+      const objectToDuplicate = prev.find((obj) => obj.id === objectId);
+      if (!objectToDuplicate) return prev;
 
-    const newId = `obj-${Date.now()}`;
-    const duplicatedObject: GameObject = {
-      ...JSON.parse(JSON.stringify(objectToDuplicate)),
-      id: newId,
-      name: `${objectToDuplicate.name} Copy`,
-    };
-    setGameObjects((prev) => [...prev, duplicatedObject]);
-    setSelectedObjectId(newId);
-  };
+      const newId = `obj-${Date.now()}`;
+      const duplicatedObject: GameObject = {
+        ...JSON.parse(JSON.stringify(objectToDuplicate)),
+        id: newId,
+        name: `${objectToDuplicate.name} Copy`,
+      };
+      setSelectedObjectId(newId);
+      return [...prev, duplicatedObject];
+    });
+  }, []);
 
-  const handleDeleteObject = (objectId: string) => {
+  const handleDeleteObject = useCallback((objectId: string) => {
     if (confirm("Are you sure you want to delete this GameObject?")) {
       setGameObjects((prev) => prev.filter((obj) => obj.id !== objectId));
-      if (selectedObjectId === objectId) {
-        setSelectedObjectId(null);
-      }
+      setSelectedObjectId((current) => (current === objectId ? null : current));
     }
-  };
+  }, []);
 
   const handleSaveProject = () => {
     if (projectName.trim()) {
@@ -228,7 +228,7 @@ end`,
     }
   };
 
-  const handleSaveCurrentProject = () => {
+  const handleSaveCurrentProject = useCallback(() => {
     if (currentProjectId && currentProjectName) {
       // Update existing project
       const existingProject = loadProject(currentProjectId);
@@ -253,7 +253,38 @@ end`,
       // No current project, show save dialog
       setShowSaveDialog(true);
     }
-  };
+  }, [currentProjectId, currentProjectName, gameObjects, scripts]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete selected object
+      if (e.key === "Delete" && selectedObjectId) {
+        e.preventDefault();
+        handleDeleteObject(selectedObjectId);
+      }
+
+      // Duplicate selected object (Ctrl+D or Cmd+D)
+      if ((e.ctrlKey || e.metaKey) && e.key === "d" && selectedObjectId) {
+        e.preventDefault();
+        handleDuplicateObject(selectedObjectId);
+      }
+
+      // Save (Ctrl+S or Cmd+S)
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleSaveCurrentProject();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    selectedObjectId,
+    handleDeleteObject,
+    handleDuplicateObject,
+    handleSaveCurrentProject,
+  ]);
 
   const handleLoadProject = (projectId: string) => {
     const project = loadProject(projectId);
