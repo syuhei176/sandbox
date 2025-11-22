@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SceneHierarchy } from "@/components/editor/SceneHierarchy";
 import { Inspector } from "@/components/editor/Inspector";
@@ -11,12 +11,25 @@ import type {
   ScriptDefinition,
   GameSpec,
 } from "@/lib/types/gamespec";
+import {
+  saveEditorState,
+  loadEditorState,
+  saveProject,
+  loadProject,
+  loadProjectList,
+  createProject,
+  exportProjectAsJSON,
+  importProjectFromJSON,
+  deleteProject,
+  type EditorState,
+} from "@/lib/utils/storage";
 
 export default function EditorPage() {
   const router = useRouter();
-  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
-  const [gameObjects, setGameObjects] = useState<GameObject[]>([
-    // Sample game object
+  const isInitialMount = useRef(true);
+
+  // Default initial state
+  const defaultGameObjects: GameObject[] = [
     {
       id: "obj-1",
       name: "Ground",
@@ -60,9 +73,9 @@ export default function EditorPage() {
       ],
       script_id: "script-1",
     },
-  ]);
+  ];
 
-  const [scripts, setScripts] = useState<ScriptDefinition[]>([
+  const defaultScripts: ScriptDefinition[] = [
     {
       id: "script-1",
       name: "RotateCube",
@@ -79,9 +92,53 @@ function on_update(dt)
   end
 end`,
     },
-  ]);
+  ];
 
-  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
+    () => {
+      const savedState = loadEditorState();
+      return savedState ? savedState.selectedObjectId : null;
+    },
+  );
+  const [gameObjects, setGameObjects] = useState<GameObject[]>(() => {
+    const savedState = loadEditorState();
+    return savedState ? savedState.gameObjects : defaultGameObjects;
+  });
+  const [scripts, setScripts] = useState<ScriptDefinition[]>(() => {
+    const savedState = loadEditorState();
+    return savedState ? savedState.scripts : defaultScripts;
+  });
+  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(
+    () => {
+      const savedState = loadEditorState();
+      return savedState ? savedState.selectedScriptId : null;
+    },
+  );
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  // Auto-save state changes (debounced)
+  useEffect(() => {
+    // Skip auto-save on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      const editorState: EditorState = {
+        gameObjects,
+        scripts,
+        selectedObjectId,
+        selectedScriptId,
+      };
+      saveEditorState(editorState);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [gameObjects, scripts, selectedObjectId, selectedScriptId]);
 
   const selectedObject = gameObjects.find((obj) => obj.id === selectedObjectId);
 
@@ -104,6 +161,73 @@ end`,
         script.id === scriptId ? { ...script, lua_code: code } : script,
       ),
     );
+  };
+
+  const handleSaveProject = () => {
+    if (projectName.trim()) {
+      const project = createProject(projectName.trim(), gameObjects, scripts);
+      saveProject(project);
+      setShowSaveDialog(false);
+      setProjectName("");
+    }
+  };
+
+  const handleLoadProject = (projectId: string) => {
+    const project = loadProject(projectId);
+    if (project && project.gameSpec) {
+      // Extract gameObjects and scripts from the first world
+      const world = project.gameSpec.worlds[0];
+      if (world) {
+        setGameObjects(world.objects);
+        setScripts(project.gameSpec.scripts || []);
+        setSelectedObjectId(null);
+        setSelectedScriptId(null);
+        setShowLoadDialog(false);
+      }
+    }
+  };
+
+  const handleExportProject = () => {
+    const project = createProject("Exported Project", gameObjects, scripts);
+    exportProjectAsJSON(project);
+  };
+
+  const handleImportProject = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const project = await importProjectFromJSON(file);
+      if (project && project.gameSpec) {
+        const world = project.gameSpec.worlds[0];
+        if (world) {
+          setGameObjects(world.objects);
+          setScripts(project.gameSpec.scripts || []);
+          setSelectedObjectId(null);
+          setSelectedScriptId(null);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to import project:", error);
+      alert("Failed to import project. Please check the file format.");
+    } finally {
+      setImporting(false);
+      // Reset file input
+      event.target.value = "";
+    }
+  };
+
+  const handleDeleteProject = (projectId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent loading the project
+    if (confirm("Are you sure you want to delete this project?")) {
+      deleteProject(projectId);
+      // Force re-render by toggling the dialog
+      setShowLoadDialog(false);
+      setTimeout(() => setShowLoadDialog(true), 0);
+    }
   };
 
   const handlePlayGame = () => {
@@ -151,6 +275,57 @@ end`,
     <div className="flex h-screen w-screen bg-gray-900 text-gray-100 flex-col">
       {/* Toolbar */}
       <div className="h-12 bg-gray-800 border-b border-gray-700 flex items-center px-4 gap-2">
+        <button
+          onClick={() => setShowSaveDialog(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-medium transition-colors"
+          title="Save Project"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M13.5 0h-12C.673 0 0 .673 0 1.5v13c0 .827.673 1.5 1.5 1.5h12c.827 0 1.5-.673 1.5-1.5v-13c0-.827-.673-1.5-1.5-1.5zM13 14H2V2h11v12zm-2-7H4v5h7V7z" />
+          </svg>
+          Save
+        </button>
+        <button
+          onClick={() => setShowLoadDialog(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-medium transition-colors"
+          title="Load Project"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8.5 0C7.673 0 7 .673 7 1.5V8H3l5 5 5-5H9V1.5c0-.827-.673-1.5-1.5-1.5zM1 14h14v2H1z" />
+          </svg>
+          Load
+        </button>
+        <div className="w-px h-6 bg-gray-600 mx-1" />
+        <button
+          onClick={handleExportProject}
+          className="flex items-center gap-2 px-3 py-2 bg-orange-600 hover:bg-orange-700 rounded text-white text-sm font-medium transition-colors"
+          title="Export Project as JSON"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path
+              d="M8.5 0C7.673 0 7 .673 7 1.5V8H3l5 5 5-5H9V1.5c0-.827-.673-1.5-1.5-1.5z"
+              transform="rotate(180 8 8)"
+            />
+          </svg>
+          Export
+        </button>
+        <label
+          className="flex items-center gap-2 px-3 py-2 bg-teal-600 hover:bg-teal-700 rounded text-white text-sm font-medium transition-colors cursor-pointer"
+          title="Import Project from JSON"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8.5 16C7.673 16 7 15.327 7 14.5V8H3l5-5 5 5H9v6.5c0 .827-.673 1.5-1.5 1.5zM1 0h14v2H1z" />
+          </svg>
+          {importing ? "Importing..." : "Import"}
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleImportProject}
+            className="hidden"
+            disabled={importing}
+          />
+        </label>
+        <div className="flex-1" />
         <button
           onClick={handlePlayGame}
           className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-medium transition-colors"
@@ -208,6 +383,106 @@ end`,
           />
         </div>
       </div>
+
+      {/* Save Dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-96 border border-gray-700">
+            <h3 className="text-xl font-semibold mb-4">Save Project</h3>
+            <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder="Enter project name"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white mb-4 focus:outline-none focus:border-blue-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveProject();
+                if (e.key === "Escape") setShowSaveDialog(false);
+              }}
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowSaveDialog(false);
+                  setProjectName("");
+                }}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveProject}
+                disabled={!projectName.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-white transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Load Dialog */}
+      {showLoadDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-96 border border-gray-700">
+            <h3 className="text-xl font-semibold mb-4">Load Project</h3>
+            <div className="max-h-96 overflow-y-auto mb-4">
+              {loadProjectList().length === 0 ? (
+                <p className="text-gray-400 text-center py-8">
+                  No saved projects
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {loadProjectList().map((project) => (
+                    <div
+                      key={project.id}
+                      className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                    >
+                      <button
+                        onClick={() => handleLoadProject(project.id)}
+                        className="flex-1 text-left px-4 py-3"
+                      >
+                        <div className="font-medium">{project.name}</div>
+                        <div className="text-sm text-gray-400">
+                          {new Date(project.updatedAt).toLocaleString()}
+                        </div>
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteProject(project.id, e)}
+                        className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+                        title="Delete Project"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                          <path
+                            fillRule="evenodd"
+                            d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowLoadDialog(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

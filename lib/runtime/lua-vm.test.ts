@@ -19,7 +19,8 @@ vi.mock("fengari-web", () => ({
     lua_tonumber: vi.fn(() => 42),
     lua_toboolean: vi.fn(() => true),
     lua_tostring: vi.fn(() => "test"),
-    lua_tojsstring: vi.fn((L: unknown, idx: number) => "test string"),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    lua_tojsstring: vi.fn((_L: unknown, _idx: number) => "test string"),
     lua_type: vi.fn(() => 3), // LUA_TNUMBER
   },
   lauxlib: {
