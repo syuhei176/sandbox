@@ -114,6 +114,10 @@ end`,
       return savedState ? savedState.selectedScriptId : null;
     },
   );
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectName, setCurrentProjectName] = useState<string | null>(
+    null,
+  );
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [projectName, setProjectName] = useState("");
@@ -217,8 +221,37 @@ end`,
     if (projectName.trim()) {
       const project = createProject(projectName.trim(), gameObjects, scripts);
       saveProject(project);
+      setCurrentProjectId(project.id);
+      setCurrentProjectName(project.name);
       setShowSaveDialog(false);
       setProjectName("");
+    }
+  };
+
+  const handleSaveCurrentProject = () => {
+    if (currentProjectId && currentProjectName) {
+      // Update existing project
+      const existingProject = loadProject(currentProjectId);
+      if (existingProject) {
+        const updatedProject = {
+          ...existingProject,
+          updatedAt: new Date().toISOString(),
+          gameSpec: {
+            ...existingProject.gameSpec,
+            worlds: [
+              {
+                ...existingProject.gameSpec.worlds[0],
+                objects: gameObjects,
+              },
+            ],
+            scripts: scripts,
+          },
+        };
+        saveProject(updatedProject);
+      }
+    } else {
+      // No current project, show save dialog
+      setShowSaveDialog(true);
     }
   };
 
@@ -232,6 +265,8 @@ end`,
         setScripts(project.gameSpec.scripts || []);
         setSelectedObjectId(null);
         setSelectedScriptId(null);
+        setCurrentProjectId(project.id);
+        setCurrentProjectName(project.name);
         setShowLoadDialog(false);
       }
     }
@@ -326,15 +361,33 @@ end`,
       {/* Toolbar */}
       <div className="h-12 bg-gray-800 border-b border-gray-700 flex items-center px-4 gap-2">
         <button
-          onClick={() => setShowSaveDialog(true)}
+          onClick={handleSaveCurrentProject}
           className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-medium transition-colors"
-          title="Save Project"
+          title={
+            currentProjectName ? `Save "${currentProjectName}"` : "Save Project"
+          }
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M13.5 0h-12C.673 0 0 .673 0 1.5v13c0 .827.673 1.5 1.5 1.5h12c.827 0 1.5-.673 1.5-1.5v-13c0-.827-.673-1.5-1.5-1.5zM13 14H2V2h11v12zm-2-7H4v5h7V7z" />
           </svg>
-          Save
+          Save{currentProjectName ? "" : " As..."}
         </button>
+        {currentProjectName && (
+          <button
+            onClick={() => setShowSaveDialog(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded text-white text-sm font-medium transition-colors"
+            title="Save As New Project"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M13.5 0h-12C.673 0 0 .673 0 1.5v13c0 .827.673 1.5 1.5 1.5h12c.827 0 1.5-.673 1.5-1.5v-13c0-.827-.673-1.5-1.5-1.5zM13 14H2V2h11v12zm-2-7H4v5h7V7z" />
+              <path
+                d="M8 3.5a.5.5 0 0 1 .5.5v2h2a.5.5 0 0 1 0 1h-2v2a.5.5 0 0 1-1 0v-2h-2a.5.5 0 0 1 0-1h2V4a.5.5 0 0 1 .5-.5z"
+                fill="white"
+              />
+            </svg>
+            Save As...
+          </button>
+        )}
         <button
           onClick={() => setShowLoadDialog(true)}
           className="flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-medium transition-colors"
