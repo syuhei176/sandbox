@@ -1,6 +1,6 @@
-import * as THREE from 'three';
-import type { GameSpec, World, GameObject, Component } from '../types/gamespec';
-import { LuaVM } from './lua-vm';
+import * as THREE from "three";
+import type { GameSpec, World, GameObject, Component } from "../types/gamespec";
+import { LuaVM } from "./lua-vm";
 
 export class GameEngine {
   private scene: THREE.Scene;
@@ -20,7 +20,7 @@ export class GameEngine {
       75,
       canvas.clientWidth / canvas.clientHeight,
       0.1,
-      1000
+      1000,
     );
     this.camera.position.z = 5;
 
@@ -64,7 +64,7 @@ export class GameEngine {
     if (env.ambient_light) {
       const ambientLight = new THREE.AmbientLight(
         env.ambient_light.color,
-        env.ambient_light.intensity
+        env.ambient_light.intensity,
       );
       this.scene.add(ambientLight);
     }
@@ -73,12 +73,12 @@ export class GameEngine {
     if (env.directional_light) {
       const directionalLight = new THREE.DirectionalLight(
         env.directional_light.color,
-        env.directional_light.intensity
+        env.directional_light.intensity,
       );
       directionalLight.position.set(
         env.directional_light.position.x,
         env.directional_light.position.y,
-        env.directional_light.position.z
+        env.directional_light.position.z,
       );
       this.scene.add(directionalLight);
     }
@@ -97,7 +97,7 @@ export class GameEngine {
 
   private async instantiateGameObject(
     gameObject: GameObject,
-    parent?: THREE.Object3D
+    parent?: THREE.Object3D,
   ): Promise<void> {
     const object3D = new THREE.Group();
     object3D.name = gameObject.name;
@@ -106,17 +106,17 @@ export class GameEngine {
     object3D.position.set(
       gameObject.transform.position.x,
       gameObject.transform.position.y,
-      gameObject.transform.position.z
+      gameObject.transform.position.z,
     );
     object3D.rotation.set(
       gameObject.transform.rotation.x,
       gameObject.transform.rotation.y,
-      gameObject.transform.rotation.z
+      gameObject.transform.rotation.z,
     );
     object3D.scale.set(
       gameObject.transform.scale.x,
       gameObject.transform.scale.y,
-      gameObject.transform.scale.z
+      gameObject.transform.scale.z,
     );
 
     // Add components
@@ -164,47 +164,47 @@ export class GameEngine {
 
   private addComponent(object3D: THREE.Object3D, component: Component): void {
     switch (component.type) {
-      case 'mesh':
+      case "mesh":
         this.addMeshComponent(object3D, component);
         break;
-      case 'light':
+      case "light":
         this.addLightComponent(object3D, component);
         break;
-      case 'camera':
+      case "camera":
         this.addCameraComponent(object3D, component);
         break;
       // Add more component types as needed
     }
   }
 
-  private addMeshComponent(object3D: THREE.Object3D, component: Component): void {
+  private addMeshComponent(
+    object3D: THREE.Object3D,
+    component: Component,
+  ): void {
     const props = component.properties;
     let geometry: THREE.BufferGeometry;
 
     // Create geometry based on type
     switch (props.geometry) {
-      case 'box':
+      case "box":
         geometry = new THREE.BoxGeometry(
           props.width || 1,
           props.height || 1,
-          props.depth || 1
+          props.depth || 1,
         );
         break;
-      case 'sphere':
+      case "sphere":
         geometry = new THREE.SphereGeometry(props.radius || 0.5, 32, 32);
         break;
-      case 'plane':
-        geometry = new THREE.PlaneGeometry(
-          props.width || 1,
-          props.height || 1
-        );
+      case "plane":
+        geometry = new THREE.PlaneGeometry(props.width || 1, props.height || 1);
         break;
-      case 'cylinder':
+      case "cylinder":
         geometry = new THREE.CylinderGeometry(
           props.radiusTop || 0.5,
           props.radiusBottom || 0.5,
           props.height || 1,
-          32
+          32,
         );
         break;
       default:
@@ -222,28 +222,31 @@ export class GameEngine {
     object3D.add(mesh);
   }
 
-  private addLightComponent(object3D: THREE.Object3D, component: Component): void {
+  private addLightComponent(
+    object3D: THREE.Object3D,
+    component: Component,
+  ): void {
     const props = component.properties;
     let light: THREE.Light;
 
     switch (props.lightType) {
-      case 'point':
+      case "point":
         light = new THREE.PointLight(
           props.color || 0xffffff,
           props.intensity || 1,
-          props.distance || 0
+          props.distance || 0,
         );
         break;
-      case 'spot':
+      case "spot":
         light = new THREE.SpotLight(
           props.color || 0xffffff,
-          props.intensity || 1
+          props.intensity || 1,
         );
         break;
-      case 'directional':
+      case "directional":
         light = new THREE.DirectionalLight(
           props.color || 0xffffff,
-          props.intensity || 1
+          props.intensity || 1,
         );
         break;
       default:
@@ -253,13 +256,16 @@ export class GameEngine {
     object3D.add(light);
   }
 
-  private addCameraComponent(object3D: THREE.Object3D, component: Component): void {
+  private addCameraComponent(
+    object3D: THREE.Object3D,
+    component: Component,
+  ): void {
     const props = component.properties;
     const camera = new THREE.PerspectiveCamera(
       props.fov || 75,
       props.aspect || 1,
       props.near || 0.1,
-      props.far || 1000
+      props.far || 1000,
     );
     object3D.add(camera);
 
@@ -289,7 +295,28 @@ export class GameEngine {
     // Update all game objects with scripts
     for (const instance of this.gameObjects.values()) {
       if (instance.luaVM) {
+        // Call Lua update
         instance.luaVM.onUpdate(deltaTime);
+
+        // Read back transform from Lua and apply to three.js
+        const transform = instance.luaVM.getGameObjectTransform();
+        if (transform) {
+          instance.object3D.position.set(
+            transform.position.x,
+            transform.position.y,
+            transform.position.z,
+          );
+          instance.object3D.rotation.set(
+            transform.rotation.x,
+            transform.rotation.y,
+            transform.rotation.z,
+          );
+          instance.object3D.scale.set(
+            transform.scale.x,
+            transform.scale.y,
+            transform.scale.z,
+          );
+        }
       }
     }
   }
