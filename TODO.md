@@ -9,11 +9,11 @@
 - [x] 複数プロジェクトの管理（プロジェクト一覧）
 
 ### 2. GameObjectの編集機能
-- [ ] GameObjectの追加ボタン
-- [ ] GameObjectの削除機能
-- [ ] GameObjectの複製機能
-- [ ] 親子関係の編集（ドラッグ&ドロップでの階層変更）
-- [ ] GameObjectの名前変更機能
+- [x] GameObjectの追加ボタン
+- [x] GameObjectの削除機能
+- [x] GameObjectの複製機能
+- [x] 親子関係の編集（ドラッグ&ドロップでの階層変更）
+- [x] GameObjectの名前変更機能
 
 ### 3. コンポーネントシステムの強化
 - [ ] コンポーネントの追加UI（ドロップダウンから選択）
