@@ -1,12 +1,21 @@
-import type { GameObject, Component } from "@/lib/types/gamespec";
+import type {
+  GameObject,
+  Component,
+  ScriptDefinition,
+} from "@/lib/types/gamespec";
 import { useState } from "react";
 
 interface InspectorProps {
   selectedObject: GameObject | undefined;
+  scripts: ScriptDefinition[];
   onObjectUpdate: (objectId: string, updates: Partial<GameObject>) => void;
 }
 
-export function Inspector({ selectedObject, onObjectUpdate }: InspectorProps) {
+export function Inspector({
+  selectedObject,
+  scripts,
+  onObjectUpdate,
+}: InspectorProps) {
   const [showAddComponent, setShowAddComponent] = useState(false);
 
   if (!selectedObject) {
@@ -311,16 +320,66 @@ export function Inspector({ selectedObject, onObjectUpdate }: InspectorProps) {
       </div>
 
       {/* Script */}
-      {selectedObject.script_id && (
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1">
-            Script
-          </label>
-          <div className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-blue-400">
-            {selectedObject.script_id}
-          </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Script</h3>
         </div>
-      )}
+
+        {selectedObject.script_id ? (
+          <div className="p-2 bg-gray-700 rounded border border-gray-600">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-semibold text-blue-400">
+                {scripts.find((s) => s.id === selectedObject.script_id)?.name ||
+                  "Unknown Script"}
+              </div>
+              <button
+                onClick={() =>
+                  onObjectUpdate(selectedObject.id, { script_id: undefined })
+                }
+                className="text-red-400 hover:text-red-300 text-xs"
+                title="Detach Script"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="text-xs text-gray-400">
+              ID: {selectedObject.script_id}
+            </div>
+          </div>
+        ) : (
+          <div className="p-2 bg-gray-700 rounded border border-gray-600">
+            <label className="block text-xs text-gray-400 mb-1">
+              Attach Script
+            </label>
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  onObjectUpdate(selectedObject.id, {
+                    script_id: e.target.value,
+                  });
+                  e.target.value = ""; // Reset selection
+                }
+              }}
+              className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Select a script...
+              </option>
+              {scripts.map((script) => (
+                <option key={script.id} value={script.id}>
+                  {script.name}
+                </option>
+              ))}
+              {scripts.length === 0 && (
+                <option value="" disabled>
+                  No scripts available
+                </option>
+              )}
+            </select>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

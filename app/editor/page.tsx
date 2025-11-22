@@ -167,6 +167,40 @@ end`,
     );
   };
 
+  const handleScriptAdd = (name: string, template?: string) => {
+    const newId = `script-${Date.now()}`;
+    const newScript: ScriptDefinition = {
+      id: newId,
+      name,
+      lua_code:
+        template ||
+        `-- ${name}\n\nfunction on_start()\n  print("${name} started!")\nend\n\nfunction on_update(dt)\n  -- Update logic here\nend`,
+    };
+    setScripts((prev) => [...prev, newScript]);
+    setSelectedScriptId(newId);
+  };
+
+  const handleScriptDelete = (scriptId: string) => {
+    setScripts((prev) => prev.filter((s) => s.id !== scriptId));
+    if (selectedScriptId === scriptId) {
+      setSelectedScriptId(null);
+    }
+    // Remove script from any GameObject that uses it
+    setGameObjects((prev) =>
+      prev.map((obj) =>
+        obj.script_id === scriptId ? { ...obj, script_id: undefined } : obj,
+      ),
+    );
+  };
+
+  const handleScriptRename = (scriptId: string, newName: string) => {
+    setScripts((prev) =>
+      prev.map((script) =>
+        script.id === scriptId ? { ...script, name: newName } : script,
+      ),
+    );
+  };
+
   const handleAddObject = () => {
     const newId = `obj-${Date.now()}`;
     const newObject: GameObject = {
@@ -505,6 +539,9 @@ end`,
               selectedScriptId={selectedScriptId}
               onScriptSelect={setSelectedScriptId}
               onScriptUpdate={handleScriptUpdate}
+              onScriptAdd={handleScriptAdd}
+              onScriptDelete={handleScriptDelete}
+              onScriptRename={handleScriptRename}
             />
           </div>
         </div>
@@ -516,6 +553,7 @@ end`,
           </div>
           <Inspector
             selectedObject={selectedObject}
+            scripts={scripts}
             onObjectUpdate={handleObjectUpdate}
           />
         </div>

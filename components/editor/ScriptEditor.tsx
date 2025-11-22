@@ -8,6 +8,9 @@ interface ScriptEditorProps {
   selectedScriptId: string | null;
   onScriptSelect: (scriptId: string) => void;
   onScriptUpdate: (scriptId: string, code: string) => void;
+  onScriptAdd: (name: string, template?: string) => void;
+  onScriptDelete: (scriptId: string) => void;
+  onScriptRename: (scriptId: string, newName: string) => void;
 }
 
 export function ScriptEditor({
@@ -15,19 +18,54 @@ export function ScriptEditor({
   selectedScriptId,
   onScriptSelect,
   onScriptUpdate,
+  onScriptAdd,
+  onScriptDelete,
+  onScriptRename,
 }: ScriptEditorProps) {
   const selectedScript = scripts.find((s) => s.id === selectedScriptId);
+
+  const handleAddScript = () => {
+    const name = prompt("Enter script name:");
+    if (name?.trim()) {
+      const template = `-- ${name.trim()}
+
+function on_start()
+  print("${name.trim()} started!")
+end
+
+function on_update(dt)
+  -- Update logic here
+end`;
+      onScriptAdd(name.trim(), template);
+    }
+  };
+
+  const handleDeleteScript = (scriptId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to delete this script?")) {
+      onScriptDelete(scriptId);
+    }
+  };
+
+  const handleRenameScript = (scriptId: string) => {
+    const script = scripts.find((s) => s.id === scriptId);
+    if (!script) return;
+
+    const newName = prompt("Enter new name:", script.name);
+    if (newName?.trim() && newName.trim() !== script.name) {
+      onScriptRename(scriptId, newName.trim());
+    }
+  };
 
   return (
     <div className="h-full flex flex-col">
       {/* Script Tabs */}
       <div className="flex items-center gap-1 px-2 py-1 bg-gray-900 border-b border-gray-700 overflow-x-auto">
         {scripts.map((script) => (
-          <button
+          <div
             key={script.id}
-            onClick={() => onScriptSelect(script.id)}
             className={`
-              px-3 py-1 text-sm rounded-t transition-colors
+              flex items-center gap-1 px-3 py-1 text-sm rounded-t transition-colors group
               ${
                 script.id === selectedScriptId
                   ? "bg-gray-800 text-white"
@@ -35,9 +73,30 @@ export function ScriptEditor({
               }
             `}
           >
-            {script.name}
-          </button>
+            <button
+              onClick={() => onScriptSelect(script.id)}
+              onDoubleClick={() => handleRenameScript(script.id)}
+              className="flex-1"
+              title="Double-click to rename"
+            >
+              {script.name}
+            </button>
+            <button
+              onClick={(e) => handleDeleteScript(script.id, e)}
+              className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 ml-1"
+              title="Delete Script"
+            >
+              ✕
+            </button>
+          </div>
         ))}
+        <button
+          onClick={handleAddScript}
+          className="px-2 py-1 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors"
+          title="Add New Script"
+        >
+          +
+        </button>
       </div>
 
       {/* Code Editor */}
