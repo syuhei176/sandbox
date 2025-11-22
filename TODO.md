@@ -16,12 +16,12 @@
 - [x] GameObjectの名前変更機能
 
 ### 3. コンポーネントシステムの強化
-- [ ] コンポーネントの追加UI（ドロップダウンから選択）
-- [ ] コンポーネントの削除機能
-- [ ] 各コンポーネントタイプの専用Inspector UI
-  - [ ] Mesh: geometry type selector, material properties
-  - [ ] Light: light type selector, color picker
-  - [ ] Camera: FOV slider, near/far planes
+- [x] コンポーネントの追加UI（ドロップダウンから選択）
+- [x] コンポーネントの削除機能
+- [x] 各コンポーネントタイプの専用Inspector UI
+  - [x] Mesh: geometry type selector, material properties
+  - [x] Light: light type selector, color picker
+  - [x] Camera: FOV slider, near/far planes
 
 ### 4. Transformの編集改善
 - [ ] 数値入力フィールドの実装（現在未実装の場合）
