@@ -257,8 +257,10 @@ export class GameEngine {
     const mesh = new THREE.Mesh(geometry, material);
     object3D.add(mesh);
 
-    // Create collider if collision is enabled
+    // Create collider if collision is enabled - AFTER mesh is added
     if (props.hasCollision === true) {
+      // Update the world matrix to ensure position is correct
+      object3D.updateMatrixWorld(true);
       this.createCollider(gameObjectId, object3D, props);
     }
   }
@@ -337,10 +339,12 @@ export class GameEngine {
         object3D.scale.y,
         object3D.scale.z,
       );
-      const sphere = new THREE.Sphere(
-        object3D.position.clone(),
-        radius * maxScale,
-      );
+
+      // Get world position
+      const worldPos = new THREE.Vector3();
+      object3D.getWorldPosition(worldPos);
+
+      const sphere = new THREE.Sphere(worldPos, radius * maxScale);
       colliderData = {
         gameObjectId,
         shape: "sphere",
@@ -348,8 +352,22 @@ export class GameEngine {
         isTrigger,
         layer,
       };
-    } else {
+
+      // Store original radius for updates
+      (colliderData as any).originalRadius = radius;
+    } else if (shape === "box" || shape === "auto") {
       // Create box collider (AABB)
+      const box = new THREE.Box3();
+      box.setFromObject(object3D);
+      colliderData = {
+        gameObjectId,
+        shape: "box",
+        boundingBox: box,
+        isTrigger,
+        layer,
+      };
+    } else {
+      // Fallback to box
       const box = new THREE.Box3();
       box.setFromObject(object3D);
       colliderData = {
@@ -362,6 +380,8 @@ export class GameEngine {
     }
 
     this.colliders.set(gameObjectId, colliderData);
+
+    console.log(`Created ${shape} collider for ${gameObjectId}:`, colliderData);
   }
 
   private updateColliders(): void {
@@ -369,22 +389,28 @@ export class GameEngine {
       const instance = this.gameObjects.get(id);
       if (!instance) continue;
 
+      // Update world matrix first
+      instance.object3D.updateMatrixWorld(true);
+
       if (collider.boundingBox) {
         collider.boundingBox.setFromObject(instance.object3D);
       } else if (collider.boundingSphere) {
-        collider.boundingSphere.center.copy(instance.object3D.position);
+        // Get world position
+        const worldPos = new THREE.Vector3();
+        instance.object3D.getWorldPosition(worldPos);
+        collider.boundingSphere.center.copy(worldPos);
+
         // Update radius based on current scale
         const maxScale = Math.max(
           instance.object3D.scale.x,
           instance.object3D.scale.y,
           instance.object3D.scale.z,
         );
-        // Store original radius if not already stored
-        if (!(collider as any).originalRadius) {
-          (collider as any).originalRadius = collider.boundingSphere.radius;
+
+        if ((collider as any).originalRadius) {
+          collider.boundingSphere.radius =
+            (collider as any).originalRadius * maxScale;
         }
-        collider.boundingSphere.radius =
-          (collider as any).originalRadius * maxScale;
       }
     }
   }
@@ -406,17 +432,88 @@ export class GameEngine {
 
           // Check for new collision (trigger enter)
           if (!this.previousCollisions.has(pairKey)) {
-            if (a.isTrigger) {
-              this.notifyTriggerEnter(a.gameObjectId, b.gameObjectId);
-            }
-            if (b.isTrigger) {
-              this.notifyTriggerEnter(b.gameObjectId, a.gameObjectId);
+            console.log(
+              `Collision detected: ${a.gameObjectId} <-> ${b.gameObjectId}`,
+            );
+            if (a.isTrigger || b.isTrigger) {
+              if (a.isTrigger) {
+                this.notifyTriggerEnter(a.gameObjectId, b.gameObjectId);
+              }
+              if (b.isTrigger) {
+                this.notifyTriggerEnter(b.gameObjectId, a.gameObjectId);
+              }
             }
           }
 
-          // Call collision callbacks
-          this.notifyCollision(a.gameObjectId, b.gameObjectId);
-          this.notifyCollision(b.gameObjectId, a.gameObjectId);
+          // Solid collision response - push back objects with scripts
+          if (!a.isTrigger && !b.isTrigger) {
+            const instanceA = this.gameObjects.get(a.gameObjectId);
+            const instanceB = this.gameObjects.get(b.gameObjectId);
+
+            // Determine if this is a ground/floor collision (skip XZ pushback for these)
+            const isGroundCollision =
+              instanceA?.gameObject.name === "Ground" ||
+              instanceB?.gameObject.name === "Ground" ||
+              (instanceB && instanceB.object3D.scale.y < 0.5);
+
+            // Only push back on horizontal (XZ) collisions, not vertical (Y) collisions
+            if (!isGroundCollision) {
+              // If A has a script (is dynamic) and B doesn't (is static), push A back on XZ only
+              if (
+                instanceA?.luaVM &&
+                !instanceB?.luaVM &&
+                instanceA.previousPosition
+              ) {
+                instanceA.object3D.position.x = instanceA.previousPosition.x;
+                instanceA.object3D.position.z = instanceA.previousPosition.z;
+                instanceA.gameObject.transform.position.x =
+                  instanceA.previousPosition.x;
+                instanceA.gameObject.transform.position.z =
+                  instanceA.previousPosition.z;
+                // Update Lua VM position
+                if (instanceA.luaVM) {
+                  instanceA.luaVM.setGameObject(instanceA.gameObject);
+                }
+              }
+              // If B has a script and A doesn't, push B back on XZ only
+              else if (
+                instanceB?.luaVM &&
+                !instanceA?.luaVM &&
+                instanceB.previousPosition
+              ) {
+                instanceB.object3D.position.x = instanceB.previousPosition.x;
+                instanceB.object3D.position.z = instanceB.previousPosition.z;
+                instanceB.gameObject.transform.position.x =
+                  instanceB.previousPosition.x;
+                instanceB.gameObject.transform.position.z =
+                  instanceB.previousPosition.z;
+                // Update Lua VM position
+                if (instanceB.luaVM) {
+                  instanceB.luaVM.setGameObject(instanceB.gameObject);
+                }
+              }
+              // If both have scripts, push the one that moved into the other back on XZ only
+              else if (
+                instanceA?.luaVM &&
+                instanceB?.luaVM &&
+                instanceA.previousPosition
+              ) {
+                instanceA.object3D.position.x = instanceA.previousPosition.x;
+                instanceA.object3D.position.z = instanceA.previousPosition.z;
+                instanceA.gameObject.transform.position.x =
+                  instanceA.previousPosition.x;
+                instanceA.gameObject.transform.position.z =
+                  instanceA.previousPosition.z;
+                if (instanceA.luaVM) {
+                  instanceA.luaVM.setGameObject(instanceA.gameObject);
+                }
+              }
+            }
+
+            // Call collision callbacks
+            this.notifyCollision(a.gameObjectId, b.gameObjectId);
+            this.notifyCollision(b.gameObjectId, a.gameObjectId);
+          }
         }
       }
     }
@@ -579,6 +676,13 @@ export class GameEngine {
   };
 
   private update(deltaTime: number): void {
+    // Save previous positions before update
+    for (const instance of this.gameObjects.values()) {
+      if (this.colliders.has(instance.id)) {
+        instance.previousPosition = instance.object3D.position.clone();
+      }
+    }
+
     // Update all game objects with scripts
     for (const instance of this.gameObjects.values()) {
       if (instance.luaVM) {
@@ -710,4 +814,5 @@ interface GameObjectInstance {
   object3D: THREE.Object3D;
   luaVM: LuaVM | null;
   gameObject: GameObject;
+  previousPosition?: THREE.Vector3;
 }
