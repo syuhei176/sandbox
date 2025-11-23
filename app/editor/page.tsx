@@ -13,7 +13,6 @@ import type {
 } from "@/lib/types/gamespec";
 import {
   saveEditorState,
-  loadEditorState,
   saveProject,
   loadProject,
   loadProjectList,
@@ -28,22 +27,22 @@ export default function EditorPage() {
   const router = useRouter();
   const isInitialMount = useRef(true);
 
-  // Default initial state
+  // Default initial state - Collectible Item Game
   const defaultGameObjects: GameObject[] = [
     {
-      id: "obj-1",
+      id: "obj-ground",
       name: "Ground",
       transform: {
         position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
-        scale: { x: 10, y: 0.1, z: 10 },
+        scale: { x: 15, y: 0.2, z: 15 },
       },
       components: [
         {
           type: "mesh",
           properties: {
             geometry: "box",
-            color: 0x808080,
+            color: 0x95e1d3,
             width: 1,
             height: 1,
             depth: 1,
@@ -52,12 +51,12 @@ export default function EditorPage() {
       ],
     },
     {
-      id: "obj-2",
-      name: "Cube",
+      id: "obj-platform1",
+      name: "Platform1",
       transform: {
-        position: { x: 0, y: 2, z: 0 },
+        position: { x: 3, y: 0.5, z: 3 },
         rotation: { x: 0, y: 0, z: 0 },
-        scale: { x: 1, y: 1, z: 1 },
+        scale: { x: 2, y: 0.3, z: 2 },
       },
       components: [
         {
@@ -71,49 +70,267 @@ export default function EditorPage() {
           },
         },
       ],
-      script_id: "script-1",
+    },
+    {
+      id: "obj-platform2",
+      name: "Platform2",
+      transform: {
+        position: { x: -4, y: 1.0, z: -2 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 2.5, y: 0.3, z: 2.5 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            geometry: "box",
+            color: 0xffe66d,
+            width: 1,
+            height: 1,
+            depth: 1,
+          },
+        },
+      ],
+    },
+    {
+      id: "obj-player",
+      name: "Player",
+      transform: {
+        position: { x: 0, y: 1, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 0.5, y: 1, z: 0.5 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            geometry: "cylinder",
+            color: 0x4ecdc4,
+            radiusTop: 0.5,
+            radiusBottom: 0.5,
+            height: 2,
+          },
+        },
+      ],
+      script_id: "script-player",
+    },
+    {
+      id: "obj-camera",
+      name: "MainCamera",
+      transform: {
+        position: { x: 0, y: 8, z: 8 },
+        rotation: { x: -0.7, y: 0, z: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+      },
+      components: [
+        {
+          type: "camera",
+          properties: {
+            fov: 60,
+            aspect: 16 / 9,
+            near: 0.1,
+            far: 1000,
+            isMainCamera: true,
+          },
+        },
+      ],
+      script_id: "script-camera",
+    },
+    {
+      id: "obj-collectible1",
+      name: "Collectible1",
+      transform: {
+        position: { x: 2, y: 1.5, z: 2 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 0.3, y: 0.3, z: 0.3 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            geometry: "box",
+            color: 0xffd93d,
+            width: 1,
+            height: 1,
+            depth: 1,
+          },
+        },
+      ],
+      script_id: "script-collectible",
+    },
+    {
+      id: "obj-collectible2",
+      name: "Collectible2",
+      transform: {
+        position: { x: -3, y: 1.5, z: 3 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 0.3, y: 0.3, z: 0.3 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            geometry: "box",
+            color: 0xff6bcf,
+            width: 1,
+            height: 1,
+            depth: 1,
+          },
+        },
+      ],
+      script_id: "script-collectible",
+    },
+    {
+      id: "obj-collectible3",
+      name: "Collectible3",
+      transform: {
+        position: { x: 4, y: 2, z: -3 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 0.3, y: 0.3, z: 0.3 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            geometry: "box",
+            color: 0xff9a3c,
+            width: 1,
+            height: 1,
+            depth: 1,
+          },
+        },
+      ],
+      script_id: "script-collectible",
+    },
+    {
+      id: "obj-collectible4",
+      name: "Collectible4",
+      transform: {
+        position: { x: -4, y: 2.5, z: -2 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 0.3, y: 0.3, z: 0.3 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            geometry: "box",
+            color: 0x6bcfff,
+            width: 1,
+            height: 1,
+            depth: 1,
+          },
+        },
+      ],
+      script_id: "script-collectible",
+    },
+    {
+      id: "obj-light",
+      name: "PointLight",
+      transform: {
+        position: { x: 0, y: 5, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+      },
+      components: [
+        {
+          type: "light",
+          properties: {
+            lightType: "point",
+            color: 0xffffff,
+            intensity: 1.5,
+            distance: 20,
+          },
+        },
+      ],
     },
   ];
 
   const defaultScripts: ScriptDefinition[] = [
     {
-      id: "script-1",
-      name: "RotateCube",
-      lua_code: `-- Rotate the cube over time
-local rotation_speed = 1.0
+      id: "script-player",
+      name: "PlayerController",
+      lua_code: `-- Player Controller with Arrow Keys
+local speed = 5.0
 
 function on_start()
-  print("Cube started!")
+end
+
+function on_update(dt)
+  if not gameobject then return end
+
+  -- Movement with arrow keys
+  if input and input["arrowup"] then
+    gameobject.transform.position.z = gameobject.transform.position.z - speed * dt
+  end
+  if input and input["arrowdown"] then
+    gameobject.transform.position.z = gameobject.transform.position.z + speed * dt
+  end
+  if input and input["arrowleft"] then
+    gameobject.transform.position.x = gameobject.transform.position.x - speed * dt
+  end
+  if input and input["arrowright"] then
+    gameobject.transform.position.x = gameobject.transform.position.x + speed * dt
+  end
+
+  -- Keep player above ground
+  if gameobject.transform.position.y < 1 then
+    gameobject.transform.position.y = 1
+  end
+end`,
+    },
+    {
+      id: "script-camera",
+      name: "CameraFollow",
+      lua_code: `-- Camera follows the player
+local offset_x = 0
+local offset_y = 5
+local offset_z = 10
+
+function on_start()
+end
+
+function on_update(dt)
+  if not gameobject then return end
+
+  -- Find the player object
+  local player = find_gameobject("Player")
+
+  if player and player.transform then
+    -- Follow player with offset
+    gameobject.transform.position.x = player.transform.position.x + offset_x
+    gameobject.transform.position.y = player.transform.position.y + offset_y
+    gameobject.transform.position.z = player.transform.position.z + offset_z
+  end
+end`,
+    },
+    {
+      id: "script-collectible",
+      name: "CollectibleRotate",
+      lua_code: `-- Rotate collectible items
+local rotation_speed = 2.0
+
+function on_start()
 end
 
 function on_update(dt)
   if gameobject then
+    -- Rotate the collectible
     gameobject.transform.rotation.y = gameobject.transform.rotation.y + (rotation_speed * dt)
+
+    -- Bob up and down
+    local time = dt * 2
+    gameobject.transform.position.y = gameobject.transform.position.y + math.sin(time) * 0.01
   end
 end`,
     },
   ];
 
-  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
-    () => {
-      const savedState = loadEditorState();
-      return savedState ? savedState.selectedObjectId : null;
-    },
-  );
-  const [gameObjects, setGameObjects] = useState<GameObject[]>(() => {
-    const savedState = loadEditorState();
-    return savedState ? savedState.gameObjects : defaultGameObjects;
-  });
-  const [scripts, setScripts] = useState<ScriptDefinition[]>(() => {
-    const savedState = loadEditorState();
-    return savedState ? savedState.scripts : defaultScripts;
-  });
-  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(
-    () => {
-      const savedState = loadEditorState();
-      return savedState ? savedState.selectedScriptId : null;
-    },
-  );
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [gameObjects, setGameObjects] =
+    useState<GameObject[]>(defaultGameObjects);
+  const [scripts, setScripts] = useState<ScriptDefinition[]>(defaultScripts);
+  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [currentProjectName, setCurrentProjectName] = useState<string | null>(
     null,
@@ -123,13 +340,32 @@ end`,
   const [projectName, setProjectName] = useState("");
   const [importing, setImporting] = useState(false);
 
-  // Auto-save state changes (debounced)
+  // Load project from URL hash on mount
   useEffect(() => {
-    // Skip auto-save on initial mount
+    const hash = window.location.hash.slice(1); // Remove #
+    if (hash) {
+      const project = loadProject(hash);
+      if (project) {
+        setGameObjects(
+          project.gameSpec.worlds[0]?.objects || defaultGameObjects,
+        );
+        setScripts(project.gameSpec.scripts || defaultScripts);
+        setCurrentProjectId(project.id);
+        setCurrentProjectName(project.name);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-save state changes (debounced) - only for existing projects
+  useEffect(() => {
+    // Skip auto-save on initial mount or if no project loaded
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
+
+    if (!currentProjectId) return; // Don't auto-save new/unsaved projects
 
     const timeoutId = setTimeout(() => {
       const editorState: EditorState = {
@@ -142,7 +378,13 @@ end`,
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [gameObjects, scripts, selectedObjectId, selectedScriptId]);
+  }, [
+    gameObjects,
+    scripts,
+    selectedObjectId,
+    selectedScriptId,
+    currentProjectId,
+  ]);
 
   const selectedObject = gameObjects.find((obj) => obj.id === selectedObjectId);
 
@@ -259,6 +501,8 @@ end`,
       setCurrentProjectName(project.name);
       setShowSaveDialog(false);
       setProjectName("");
+      // Update URL hash with project ID
+      window.location.hash = project.id;
     }
   };
 
@@ -333,6 +577,8 @@ end`,
         setCurrentProjectId(project.id);
         setCurrentProjectName(project.name);
         setShowLoadDialog(false);
+        // Update URL hash with project ID
+        window.location.hash = project.id;
       }
     }
   };
@@ -421,10 +667,32 @@ end`,
     router.push("/runtime");
   };
 
+  const handleNewProject = () => {
+    if (confirm("Create a new project? Any unsaved changes will be lost.")) {
+      setGameObjects(defaultGameObjects);
+      setScripts(defaultScripts);
+      setSelectedObjectId(null);
+      setSelectedScriptId(null);
+      setCurrentProjectId(null);
+      setCurrentProjectName(null);
+      window.location.hash = "";
+    }
+  };
+
   return (
     <div className="flex h-screen w-screen bg-gray-900 text-gray-100 flex-col">
       {/* Toolbar */}
       <div className="h-12 bg-gray-800 border-b border-gray-700 flex items-center px-4 gap-2">
+        <button
+          onClick={handleNewProject}
+          className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-medium transition-colors"
+          title="New Project"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0a.5.5 0 0 1 .5.5v7h7a.5.5 0 0 1 0 1h-7v7a.5.5 0 0 1-1 0v-7h-7a.5.5 0 0 1 0-1h7v-7A.5.5 0 0 1 8 0z" />
+          </svg>
+          New
+        </button>
         <button
           onClick={handleSaveCurrentProject}
           className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-medium transition-colors"

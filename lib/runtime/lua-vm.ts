@@ -1,5 +1,13 @@
 import type { GameObject } from "../types/gamespec";
 
+// Import GameObjectInstance interface
+interface GameObjectInstance {
+  id: string;
+  object3D: unknown;
+  luaVM: LuaVM | null;
+  gameObject: GameObject;
+}
+
 export class LuaVM {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private fengari: any;
@@ -15,6 +23,7 @@ export class LuaVM {
   private to_jsstring: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private L: any;
+  private allGameObjects: Map<string, GameObjectInstance> | null = null;
 
   constructor() {
     if (typeof window === "undefined") {
@@ -35,6 +44,25 @@ export class LuaVM {
     // Create new Lua state
     this.L = this.lauxlib.luaL_newstate();
     this.lualib.luaL_openlibs(this.L);
+
+    // Register find_gameobject function
+    // We use a simple Lua function that accesses the all_gameobjects global table
+    // which is updated each frame with the latest GameObject positions
+    this.registerStubFindGameObject();
+  }
+
+  private registerStubFindGameObject(): void {
+    // Register a Lua function that uses the all_gameobjects global table
+    const stubCode = `
+function find_gameobject(name)
+  if all_gameobjects and all_gameobjects[name] then
+    return all_gameobjects[name]
+  end
+  return nil
+end
+`;
+    this.lauxlib.luaL_loadstring(this.L, this.to_luastring(stubCode));
+    this.lua.lua_pcall(this.L, 0, 0, 0);
   }
 
   loadScript(scriptCode: string, scriptId: string): boolean {
@@ -110,6 +138,84 @@ export class LuaVM {
 
     // Set as global 'gameobject'
     this.lua.lua_setglobal(this.L, this.to_luastring("gameobject"));
+  }
+
+  setInputState(keyboardState: { [key: string]: boolean }): void {
+    if (!this.L) return;
+
+    // Create a Lua table for input
+    this.lua.lua_newtable(this.L);
+
+    // Set each key state
+    for (const [key, isPressed] of Object.entries(keyboardState)) {
+      this.lua.lua_pushstring(this.L, this.to_luastring(key));
+      this.lua.lua_pushboolean(this.L, isPressed);
+      this.lua.lua_settable(this.L, -3);
+    }
+
+    // Set as global 'input'
+    this.lua.lua_setglobal(this.L, this.to_luastring("input"));
+  }
+
+  setAllGameObjects(gameObjects: Map<string, GameObjectInstance>): void {
+    this.allGameObjects = gameObjects;
+
+    // Also update the Lua global with all game objects for find_gameobject to use
+    if (!this.L) return;
+
+    this.lua.lua_newtable(this.L); // Create table for all_gameobjects
+
+    for (const instance of gameObjects.values()) {
+      // Use name as key
+      this.lua.lua_pushstring(
+        this.L,
+        this.to_luastring(instance.gameObject.name),
+      );
+
+      // Create table for this game object
+      this.lua.lua_newtable(this.L);
+
+      // id
+      this.lua.lua_pushstring(this.L, this.to_luastring("id"));
+      this.lua.lua_pushstring(
+        this.L,
+        this.to_luastring(instance.gameObject.id),
+      );
+      this.lua.lua_settable(this.L, -3);
+
+      // name
+      this.lua.lua_pushstring(this.L, this.to_luastring("name"));
+      this.lua.lua_pushstring(
+        this.L,
+        this.to_luastring(instance.gameObject.name),
+      );
+      this.lua.lua_settable(this.L, -3);
+
+      // transform
+      this.lua.lua_pushstring(this.L, this.to_luastring("transform"));
+      this.lua.lua_newtable(this.L);
+
+      // position
+      this.lua.lua_pushstring(this.L, this.to_luastring("position"));
+      this.pushVector3(instance.gameObject.transform.position);
+      this.lua.lua_settable(this.L, -3);
+
+      // rotation
+      this.lua.lua_pushstring(this.L, this.to_luastring("rotation"));
+      this.pushVector3(instance.gameObject.transform.rotation);
+      this.lua.lua_settable(this.L, -3);
+
+      // scale
+      this.lua.lua_pushstring(this.L, this.to_luastring("scale"));
+      this.pushVector3(instance.gameObject.transform.scale);
+      this.lua.lua_settable(this.L, -3);
+
+      this.lua.lua_settable(this.L, -3); // Set transform in game object table
+
+      this.lua.lua_settable(this.L, -3); // Set game object in all_gameobjects table
+    }
+
+    this.lua.lua_setglobal(this.L, this.to_luastring("all_gameobjects"));
   }
 
   private pushVector3(vec: { x: number; y: number; z: number }): void {

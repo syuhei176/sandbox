@@ -10,6 +10,8 @@ export class GameEngine {
   private scripts: Map<string, string> = new Map();
   private animationFrameId: number | null = null;
   private lastTime: number = 0;
+  private keyboardState: { [key: string]: boolean } = {};
+  private mainCameraObjectId: string | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize scene
@@ -121,7 +123,7 @@ export class GameEngine {
 
     // Add components
     for (const component of gameObject.components) {
-      this.addComponent(object3D, component);
+      this.addComponent(object3D, component, gameObject.id);
     }
 
     // Add to scene or parent
@@ -162,7 +164,11 @@ export class GameEngine {
     }
   }
 
-  private addComponent(object3D: THREE.Object3D, component: Component): void {
+  private addComponent(
+    object3D: THREE.Object3D,
+    component: Component,
+    gameObjectId: string,
+  ): void {
     switch (component.type) {
       case "mesh":
         this.addMeshComponent(object3D, component);
@@ -171,7 +177,7 @@ export class GameEngine {
         this.addLightComponent(object3D, component);
         break;
       case "camera":
-        this.addCameraComponent(object3D, component);
+        this.addCameraComponent(object3D, component, gameObjectId);
         break;
       // Add more component types as needed
     }
@@ -276,6 +282,7 @@ export class GameEngine {
   private addCameraComponent(
     object3D: THREE.Object3D,
     component: Component,
+    gameObjectId: string,
   ): void {
     const props = component.properties;
 
@@ -296,13 +303,28 @@ export class GameEngine {
     // Optionally use this as the main camera
     if (props.isMainCamera) {
       this.camera = camera;
+      this.mainCameraObjectId = gameObjectId;
     }
   }
 
   start(): void {
     this.lastTime = performance.now();
+    this.setupInputListeners();
     this.animate();
   }
+
+  private setupInputListeners(): void {
+    window.addEventListener("keydown", this.handleKeyDown);
+    window.addEventListener("keyup", this.handleKeyUp);
+  }
+
+  private handleKeyDown = (event: KeyboardEvent): void => {
+    this.keyboardState[event.key.toLowerCase()] = true;
+  };
+
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    this.keyboardState[event.key.toLowerCase()] = false;
+  };
 
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
@@ -319,10 +341,13 @@ export class GameEngine {
     // Update all game objects with scripts
     for (const instance of this.gameObjects.values()) {
       if (instance.luaVM) {
+        // Set input state before calling update
+        instance.luaVM.setInputState(this.keyboardState);
+
         // Call Lua update
         instance.luaVM.onUpdate(deltaTime);
 
-        // Read back transform from Lua and apply to three.js
+        // Read back transform from Lua and apply to three.js AND gameObject
         const transform = instance.luaVM.getGameObjectTransform();
         if (transform) {
           instance.object3D.position.set(
@@ -340,7 +365,28 @@ export class GameEngine {
             transform.scale.y,
             transform.scale.z,
           );
+
+          // Also update the gameObject.transform so other scripts can see the new position
+          instance.gameObject.transform.position = { ...transform.position };
+          instance.gameObject.transform.rotation = { ...transform.rotation };
+          instance.gameObject.transform.scale = { ...transform.scale };
         }
+      }
+    }
+
+    // Now update all_gameobjects table with latest positions for scripts that reference other objects
+    for (const instance of this.gameObjects.values()) {
+      if (instance.luaVM) {
+        instance.luaVM.setAllGameObjects(this.gameObjects);
+      }
+    }
+
+    // Sync main camera position from its GameObject
+    if (this.mainCameraObjectId) {
+      const cameraInstance = this.gameObjects.get(this.mainCameraObjectId);
+      if (cameraInstance) {
+        this.camera.position.copy(cameraInstance.object3D.position);
+        this.camera.rotation.copy(cameraInstance.object3D.rotation);
       }
     }
   }
@@ -376,6 +422,10 @@ export class GameEngine {
 
   destroy(): void {
     this.stop();
+
+    // Remove input listeners
+    window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("keyup", this.handleKeyUp);
 
     // Destroy all Lua VMs
     for (const instance of this.gameObjects.values()) {
