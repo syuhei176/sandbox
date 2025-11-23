@@ -347,6 +347,76 @@ end
     this.callFunction("on_update", deltaTime);
   }
 
+  onCollision(otherObject: GameObject): void {
+    this.callCollisionCallback("on_collision", otherObject);
+  }
+
+  onTriggerEnter(otherObject: GameObject): void {
+    this.callCollisionCallback("on_trigger_enter", otherObject);
+  }
+
+  onTriggerExit(otherObject: GameObject): void {
+    this.callCollisionCallback("on_trigger_exit", otherObject);
+  }
+
+  private callCollisionCallback(
+    funcName: string,
+    otherObject: GameObject,
+  ): void {
+    if (!this.L) return;
+
+    this.lua.lua_getglobal(this.L, this.to_luastring(funcName));
+
+    if (!this.lua.lua_isfunction(this.L, -1)) {
+      this.lua.lua_pop(this.L, 1);
+      return;
+    }
+
+    // Push other object as table
+    this.pushGameObjectTable(otherObject);
+
+    if (this.lua.lua_pcall(this.L, 1, 0, 0) !== this.lua.LUA_OK) {
+      const errorMsg = this.lua.lua_tojsstring(this.L, -1);
+      console.error(`Lua ${funcName} error:`, errorMsg);
+      this.lua.lua_pop(this.L, 1);
+    }
+  }
+
+  private pushGameObjectTable(gameObject: GameObject): void {
+    this.lua.lua_newtable(this.L);
+
+    // id
+    this.lua.lua_pushstring(this.L, this.to_luastring("id"));
+    this.lua.lua_pushstring(this.L, this.to_luastring(gameObject.id));
+    this.lua.lua_settable(this.L, -3);
+
+    // name
+    this.lua.lua_pushstring(this.L, this.to_luastring("name"));
+    this.lua.lua_pushstring(this.L, this.to_luastring(gameObject.name));
+    this.lua.lua_settable(this.L, -3);
+
+    // transform
+    this.lua.lua_pushstring(this.L, this.to_luastring("transform"));
+    this.lua.lua_newtable(this.L);
+
+    // transform.position
+    this.lua.lua_pushstring(this.L, this.to_luastring("position"));
+    this.lua.lua_newtable(this.L);
+    this.lua.lua_pushstring(this.L, this.to_luastring("x"));
+    this.lua.lua_pushnumber(this.L, gameObject.transform.position.x);
+    this.lua.lua_settable(this.L, -3);
+    this.lua.lua_pushstring(this.L, this.to_luastring("y"));
+    this.lua.lua_pushnumber(this.L, gameObject.transform.position.y);
+    this.lua.lua_settable(this.L, -3);
+    this.lua.lua_pushstring(this.L, this.to_luastring("z"));
+    this.lua.lua_pushnumber(this.L, gameObject.transform.position.z);
+    this.lua.lua_settable(this.L, -3);
+    this.lua.lua_settable(this.L, -3);
+
+    // Set transform table
+    this.lua.lua_settable(this.L, -3);
+  }
+
   destroy(): void {
     if (this.L) {
       this.lua.lua_close(this.L);

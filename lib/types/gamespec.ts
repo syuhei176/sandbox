@@ -86,6 +86,14 @@ export type GeometryType =
 // - model_data: Base64-encoded GLB data for inline storage
 // - model_prompt: Original text prompt used for AI generation (optional)
 
+// Collision properties for mesh components:
+// - hasCollision: boolean - Enable collision detection for this mesh
+// - collisionShape: "box" | "sphere" | "auto" - Shape of the collision volume
+// - isTrigger: boolean - If true, passes through but triggers collision events
+// - collisionLayer: number - Layer for collision filtering (default: 0)
+
+export type CollisionShape = "box" | "sphere" | "auto";
+
 export interface ScriptDefinition {
   id: string;
   name: string;

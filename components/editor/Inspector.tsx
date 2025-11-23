@@ -683,6 +683,87 @@ function MeshComponentEditor({
             </div>
           </>
         )}
+
+        {/* Collision Properties */}
+        <div className="pt-3 border-t border-gray-600 space-y-2">
+          <div className="text-xs font-semibold text-gray-300 mb-2">
+            Collision Detection
+          </div>
+
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-gray-400">Enable Collision</label>
+            <input
+              type="checkbox"
+              checked={properties.hasCollision === true}
+              onChange={(e) =>
+                onPropertyChange("hasCollision", e.target.checked)
+              }
+              className="w-4 h-4 bg-gray-600 border border-gray-500 rounded cursor-pointer"
+            />
+          </div>
+
+          {properties.hasCollision && (
+            <>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  Collision Shape
+                </label>
+                <select
+                  value={String(properties.collisionShape || "auto")}
+                  onChange={(e) =>
+                    onPropertyChange("collisionShape", e.target.value)
+                  }
+                  className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
+                >
+                  <option value="auto">Auto (match geometry)</option>
+                  <option value="box">Box (AABB)</option>
+                  <option value="sphere">Sphere</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-xs text-gray-400">
+                    Is Trigger
+                  </label>
+                  <div className="text-xs text-gray-500">
+                    Pass through but detect
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={properties.isTrigger === true}
+                  onChange={(e) =>
+                    onPropertyChange("isTrigger", e.target.checked)
+                  }
+                  className="w-4 h-4 bg-gray-600 border border-gray-500 rounded cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  Collision Layer
+                </label>
+                <input
+                  type="number"
+                  value={Number(properties.collisionLayer || 0)}
+                  onChange={(e) =>
+                    onPropertyChange(
+                      "collisionLayer",
+                      parseInt(e.target.value) || 0,
+                    )
+                  }
+                  min="0"
+                  max="31"
+                  className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Layer 0-31 for collision filtering
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Model Generator Modal */}

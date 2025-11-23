@@ -4,6 +4,15 @@ import type { GameSpec, World, GameObject, Component } from "../types/gamespec";
 import { LuaVM } from "./lua-vm";
 import { modelStorage } from "../utils/model-storage";
 
+interface ColliderData {
+  gameObjectId: string;
+  shape: "box" | "sphere";
+  boundingBox?: THREE.Box3;
+  boundingSphere?: THREE.Sphere;
+  isTrigger: boolean;
+  layer: number;
+}
+
 export class GameEngine {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
@@ -14,6 +23,8 @@ export class GameEngine {
   private lastTime: number = 0;
   private keyboardState: { [key: string]: boolean } = {};
   private mainCameraObjectId: string | null = null;
+  private colliders: Map<string, ColliderData> = new Map();
+  private previousCollisions: Set<string> = new Set();
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize scene
@@ -173,7 +184,7 @@ export class GameEngine {
   ): Promise<void> {
     switch (component.type) {
       case "mesh":
-        await this.addMeshComponent(object3D, component);
+        await this.addMeshComponent(object3D, component, gameObjectId);
         break;
       case "light":
         this.addLightComponent(object3D, component);
@@ -188,6 +199,7 @@ export class GameEngine {
   private async addMeshComponent(
     object3D: THREE.Object3D,
     component: Component,
+    gameObjectId: string,
   ): Promise<void> {
     const props = component.properties;
 
@@ -244,6 +256,11 @@ export class GameEngine {
 
     const mesh = new THREE.Mesh(geometry, material);
     object3D.add(mesh);
+
+    // Create collider if collision is enabled
+    if (props.hasCollision === true) {
+      this.createCollider(gameObjectId, object3D, props);
+    }
   }
 
   private async loadCustomModel(
@@ -296,6 +313,169 @@ export class GameEngine {
       });
       const errorMesh = new THREE.Mesh(errorGeometry, errorMaterial);
       object3D.add(errorMesh);
+    }
+  }
+
+  private createCollider(
+    gameObjectId: string,
+    object3D: THREE.Object3D,
+    properties: Record<string, unknown>,
+  ): void {
+    const shape = (properties.collisionShape as string) || "auto";
+    const isTrigger = properties.isTrigger === true;
+    const layer = (properties.collisionLayer as number) || 0;
+    const geometry = properties.geometry as string;
+
+    let colliderData: ColliderData;
+
+    // Determine collision shape
+    if (shape === "sphere" || (shape === "auto" && geometry === "sphere")) {
+      // Create sphere collider
+      const radius = (properties.radius as number) || 0.5;
+      const maxScale = Math.max(
+        object3D.scale.x,
+        object3D.scale.y,
+        object3D.scale.z,
+      );
+      const sphere = new THREE.Sphere(
+        object3D.position.clone(),
+        radius * maxScale,
+      );
+      colliderData = {
+        gameObjectId,
+        shape: "sphere",
+        boundingSphere: sphere,
+        isTrigger,
+        layer,
+      };
+    } else {
+      // Create box collider (AABB)
+      const box = new THREE.Box3();
+      box.setFromObject(object3D);
+      colliderData = {
+        gameObjectId,
+        shape: "box",
+        boundingBox: box,
+        isTrigger,
+        layer,
+      };
+    }
+
+    this.colliders.set(gameObjectId, colliderData);
+  }
+
+  private updateColliders(): void {
+    for (const [id, collider] of this.colliders) {
+      const instance = this.gameObjects.get(id);
+      if (!instance) continue;
+
+      if (collider.boundingBox) {
+        collider.boundingBox.setFromObject(instance.object3D);
+      } else if (collider.boundingSphere) {
+        collider.boundingSphere.center.copy(instance.object3D.position);
+        // Update radius based on current scale
+        const maxScale = Math.max(
+          instance.object3D.scale.x,
+          instance.object3D.scale.y,
+          instance.object3D.scale.z,
+        );
+        // Store original radius if not already stored
+        if (!(collider as any).originalRadius) {
+          (collider as any).originalRadius = collider.boundingSphere.radius;
+        }
+        collider.boundingSphere.radius =
+          (collider as any).originalRadius * maxScale;
+      }
+    }
+  }
+
+  private checkCollisions(): void {
+    const currentCollisions = new Set<string>();
+    const colliderArray = Array.from(this.colliders.values());
+
+    for (let i = 0; i < colliderArray.length; i++) {
+      for (let j = i + 1; j < colliderArray.length; j++) {
+        const a = colliderArray[i];
+        const b = colliderArray[j];
+
+        const isColliding = this.testCollision(a, b);
+
+        if (isColliding) {
+          const pairKey = `${a.gameObjectId}-${b.gameObjectId}`;
+          currentCollisions.add(pairKey);
+
+          // Check for new collision (trigger enter)
+          if (!this.previousCollisions.has(pairKey)) {
+            if (a.isTrigger) {
+              this.notifyTriggerEnter(a.gameObjectId, b.gameObjectId);
+            }
+            if (b.isTrigger) {
+              this.notifyTriggerEnter(b.gameObjectId, a.gameObjectId);
+            }
+          }
+
+          // Call collision callbacks
+          this.notifyCollision(a.gameObjectId, b.gameObjectId);
+          this.notifyCollision(b.gameObjectId, a.gameObjectId);
+        }
+      }
+    }
+
+    // Check for collision exit
+    for (const pairKey of this.previousCollisions) {
+      if (!currentCollisions.has(pairKey)) {
+        const [aId, bId] = pairKey.split("-");
+        const a = this.colliders.get(aId);
+        const b = this.colliders.get(bId);
+        if (a?.isTrigger) {
+          this.notifyTriggerExit(aId, bId);
+        }
+        if (b?.isTrigger) {
+          this.notifyTriggerExit(bId, aId);
+        }
+      }
+    }
+
+    this.previousCollisions = currentCollisions;
+  }
+
+  private testCollision(a: ColliderData, b: ColliderData): boolean {
+    if (a.boundingBox && b.boundingBox) {
+      return a.boundingBox.intersectsBox(b.boundingBox);
+    } else if (a.boundingSphere && b.boundingSphere) {
+      return a.boundingSphere.intersectsSphere(b.boundingSphere);
+    } else if (a.boundingBox && b.boundingSphere) {
+      return a.boundingBox.intersectsSphere(b.boundingSphere);
+    } else if (a.boundingSphere && b.boundingBox) {
+      return b.boundingBox.intersectsSphere(a.boundingSphere);
+    }
+    return false;
+  }
+
+  private notifyCollision(objectId: string, otherId: string): void {
+    const instance = this.gameObjects.get(objectId);
+    const otherInstance = this.gameObjects.get(otherId);
+
+    if (instance?.luaVM && otherInstance) {
+      instance.luaVM.onCollision(otherInstance.gameObject);
+    }
+  }
+
+  private notifyTriggerEnter(objectId: string, otherId: string): void {
+    const instance = this.gameObjects.get(objectId);
+    const otherInstance = this.gameObjects.get(otherId);
+
+    if (instance?.luaVM && otherInstance) {
+      instance.luaVM.onTriggerEnter(otherInstance.gameObject);
+    }
+  }
+
+  private notifyTriggerExit(objectId: string, otherId: string): void {
+    const instance = this.gameObjects.get(objectId);
+    const otherInstance = this.gameObjects.get(otherId);
+
+    if (instance?.luaVM && otherInstance) {
+      instance.luaVM.onTriggerExit(otherInstance.gameObject);
     }
   }
 
@@ -457,6 +637,10 @@ export class GameEngine {
         }
       }
     }
+
+    // Update colliders and check collisions
+    this.updateColliders();
+    this.checkCollisions();
   }
 
   private render(): void {
