@@ -702,7 +702,7 @@ function MeshComponentEditor({
             />
           </div>
 
-          {properties.hasCollision && (
+          {properties.hasCollision === true && (
             <>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">
