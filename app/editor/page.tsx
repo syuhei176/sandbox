@@ -36,7 +36,6 @@ export default function EditorPage() {
     useState<GameObject[]>(defaultGameObjects);
   const [scripts, setScripts] = useState<ScriptDefinition[]>(defaultScripts);
 
-
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -106,6 +105,15 @@ export default function EditorPage() {
   ) => {
     setGameObjects((prev) =>
       prev.map((obj) => (obj.id === objectId ? { ...obj, ...updates } : obj)),
+    );
+  };
+
+  const handleObjectTransformChange = (
+    objectId: string,
+    transform: GameObject["transform"],
+  ) => {
+    setGameObjects((prev) =>
+      prev.map((obj) => (obj.id === objectId ? { ...obj, transform } : obj)),
     );
   };
 
@@ -505,6 +513,7 @@ export default function EditorPage() {
             <Viewport3D
               gameObjects={gameObjects}
               selectedObjectId={selectedObjectId}
+              onObjectTransformChange={handleObjectTransformChange}
             />
           </div>
 
