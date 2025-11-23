@@ -6,6 +6,7 @@ import { SceneHierarchy } from "@/components/editor/SceneHierarchy";
 import { Inspector } from "@/components/editor/Inspector";
 import { Viewport3D } from "@/components/editor/Viewport3D";
 import { ScriptEditor } from "@/components/editor/ScriptEditor";
+import { MenuBar } from "@/components/editor/MenuBar";
 import type {
   GameObject,
   ScriptDefinition,
@@ -384,7 +385,11 @@ export default function EditorPage() {
   };
 
   const handleNewProject = () => {
-    if (confirm("Create a new project? Any unsaved changes will be lost.")) {
+    if (
+      confirm(
+        "Are you sure you want to create a new project? Unsaved changes will be lost.",
+      )
+    ) {
       setGameObjects(defaultGameObjects);
       setScripts(defaultScripts);
       setSelectedObjectId(null);
@@ -397,97 +402,52 @@ export default function EditorPage() {
 
   return (
     <div className="flex h-screen w-screen bg-gray-900 text-gray-100 flex-col">
-      {/* Toolbar */}
-      <div className="h-12 bg-gray-800 border-b border-gray-700 flex items-center px-4 gap-2">
-        <button
-          onClick={handleNewProject}
-          className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-medium transition-colors"
-          title="New Project"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 0a.5.5 0 0 1 .5.5v7h7a.5.5 0 0 1 0 1h-7v7a.5.5 0 0 1-1 0v-7h-7a.5.5 0 0 1 0-1h7v-7A.5.5 0 0 1 8 0z" />
-          </svg>
-          New
-        </button>
-        <button
-          onClick={handleSaveCurrentProject}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-medium transition-colors"
-          title={
-            currentProjectName ? `Save "${currentProjectName}"` : "Save Project"
+      {/* Menu Bar */}
+      <div className="flex items-stretch border-b border-gray-700">
+        <MenuBar
+          onNewProject={handleNewProject}
+          onSave={handleSaveCurrentProject}
+          onSaveAs={() => setShowSaveDialog(true)}
+          onLoad={() => setShowLoadDialog(true)}
+          onExport={handleExportProject}
+          onImport={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".json";
+            input.onchange = (e) => {
+              const event = e as unknown as React.ChangeEvent<HTMLInputElement>;
+              handleImportProject(event);
+            };
+            input.click();
+          }}
+          onDuplicate={() =>
+            selectedObjectId && handleDuplicateObject(selectedObjectId)
           }
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M13.5 0h-12C.673 0 0 .673 0 1.5v13c0 .827.673 1.5 1.5 1.5h12c.827 0 1.5-.673 1.5-1.5v-13c0-.827-.673-1.5-1.5-1.5zM13 14H2V2h11v12zm-2-7H4v5h7V7z" />
-          </svg>
-          Save{currentProjectName ? "" : " As..."}
-        </button>
-        {currentProjectName && (
+          onDelete={() =>
+            selectedObjectId && handleDeleteObject(selectedObjectId)
+          }
+          onAddGameObject={handleAddObject}
+          onAddScript={() => {
+            const scriptName = prompt("Enter script name:");
+            if (scriptName) {
+              handleScriptAdd(scriptName);
+            }
+          }}
+          hasSelection={!!selectedObjectId}
+          canSaveAs={!!currentProjectName}
+        />
+        <div className="ml-auto flex items-center px-2 bg-gray-800">
           <button
-            onClick={() => setShowSaveDialog(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded text-white text-sm font-medium transition-colors"
-            title="Save As New Project"
+            onClick={handlePlayGame}
+            className="flex items-center gap-2 px-4 py-1.5 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-medium transition-colors"
+            title="Play Game"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M13.5 0h-12C.673 0 0 .673 0 1.5v13c0 .827.673 1.5 1.5 1.5h12c.827 0 1.5-.673 1.5-1.5v-13c0-.827-.673-1.5-1.5-1.5zM13 14H2V2h11v12zm-2-7H4v5h7V7z" />
-              <path
-                d="M8 3.5a.5.5 0 0 1 .5.5v2h2a.5.5 0 0 1 0 1h-2v2a.5.5 0 0 1-1 0v-2h-2a.5.5 0 0 1 0-1h2V4a.5.5 0 0 1 .5-.5z"
-                fill="white"
-              />
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M3 2l10 6-10 6V2z" />
             </svg>
-            Save As...
+            Play
           </button>
-        )}
-        <button
-          onClick={() => setShowLoadDialog(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm font-medium transition-colors"
-          title="Load Project"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8.5 0C7.673 0 7 .673 7 1.5V8H3l5 5 5-5H9V1.5c0-.827-.673-1.5-1.5-1.5zM1 14h14v2H1z" />
-          </svg>
-          Load
-        </button>
-        <div className="w-px h-6 bg-gray-600 mx-1" />
-        <button
-          onClick={handleExportProject}
-          className="flex items-center gap-2 px-3 py-2 bg-orange-600 hover:bg-orange-700 rounded text-white text-sm font-medium transition-colors"
-          title="Export Project as JSON"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path
-              d="M8.5 0C7.673 0 7 .673 7 1.5V8H3l5 5 5-5H9V1.5c0-.827-.673-1.5-1.5-1.5z"
-              transform="rotate(180 8 8)"
-            />
-          </svg>
-          Export
-        </button>
-        <label
-          className="flex items-center gap-2 px-3 py-2 bg-teal-600 hover:bg-teal-700 rounded text-white text-sm font-medium transition-colors cursor-pointer"
-          title="Import Project from JSON"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8.5 16C7.673 16 7 15.327 7 14.5V8H3l5-5 5 5H9v6.5c0 .827-.673 1.5-1.5 1.5zM1 0h14v2H1z" />
-          </svg>
-          {importing ? "Importing..." : "Import"}
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImportProject}
-            className="hidden"
-            disabled={importing}
-          />
-        </label>
-        <div className="flex-1" />
-        <button
-          onClick={handlePlayGame}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-medium transition-colors"
-          title="Play Game"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M3 2l10 6-10 6V2z" />
-          </svg>
-          Play
-        </button>
+        </div>
       </div>
 
       {/* Main Editor Layout */}
