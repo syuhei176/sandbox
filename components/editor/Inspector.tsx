@@ -3,7 +3,8 @@ import type {
   Component,
   ScriptDefinition,
 } from "@/lib/types/gamespec";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { ModelGenerator } from "./ModelGenerator";
 
 interface InspectorProps {
   selectedObject: GameObject | undefined;
@@ -480,75 +481,218 @@ function MeshComponentEditor({
   properties,
   onPropertyChange,
 }: MeshComponentEditorProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [showModelGenerator, setShowModelGenerator] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validExtensions = [".glb", ".gltf"];
+    const fileExtension = file.name
+      .toLowerCase()
+      .slice(file.name.lastIndexOf("."));
+    if (!validExtensions.includes(fileExtension)) {
+      alert("Please upload a GLB or GLTF file");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Read file as ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+
+      // Generate unique ID
+      const modelId = `model-${Date.now()}`;
+
+      // Import modelStorage
+      const { modelStorage } = await import("@/lib/utils/model-storage");
+
+      // Save to IndexedDB
+      await modelStorage.saveModel({
+        id: modelId,
+        name: file.name,
+        data: arrayBuffer,
+        format: fileExtension === ".glb" ? "glb" : "gltf",
+        created_at: new Date().toISOString(),
+        file_size: arrayBuffer.byteLength,
+      });
+
+      // Update GameObject properties
+      onPropertyChange("model_id", modelId);
+      onPropertyChange("geometry", "custom_model");
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Failed to upload model:", error);
+      alert("Failed to upload model. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleModelGenerated = (modelId: string, modelUrl: string) => {
+    // Update GameObject properties with generated model
+    onPropertyChange("model_id", modelId);
+    onPropertyChange("geometry", "custom_model");
+    setShowModelGenerator(false);
+  };
+
   return (
-    <div className="space-y-2">
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Geometry</label>
-        <select
-          value={String(properties.geometry || "box")}
-          onChange={(e) => onPropertyChange("geometry", e.target.value)}
-          className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
-        >
-          <option value="box">Box</option>
-          <option value="sphere">Sphere</option>
-          <option value="plane">Plane</option>
-          <option value="cylinder">Cylinder</option>
-        </select>
+    <>
+      <div className="space-y-2">
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Geometry</label>
+          <select
+            value={String(properties.geometry || "box")}
+            onChange={(e) => onPropertyChange("geometry", e.target.value)}
+            className="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
+          >
+            <option value="box">Box</option>
+            <option value="sphere">Sphere</option>
+            <option value="plane">Plane</option>
+            <option value="cylinder">Cylinder</option>
+            <option value="custom_model">Custom Model</option>
+          </select>
+        </div>
+
+        {properties.geometry === "custom_model" && (
+          <div className="space-y-2 p-3 bg-gray-700 rounded border border-gray-600">
+            <div className="text-xs text-gray-300 font-medium mb-2">
+              Custom 3D Model
+            </div>
+
+            {properties.model_id ? (
+              <div className="space-y-2">
+                <div className="text-xs text-green-400">
+                  ✓ Model loaded: {String(properties.model_id)}
+                </div>
+                <button
+                  onClick={() => {
+                    onPropertyChange("model_id", undefined);
+                    onPropertyChange("geometry", "box");
+                  }}
+                  className="w-full px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-white text-xs transition-colors"
+                >
+                  Remove Model
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="block">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".glb,.gltf"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                    className="hidden"
+                  />
+                  <div className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded text-white text-xs text-center cursor-pointer transition-colors">
+                    {isUploading ? "Uploading..." : "Upload GLB/GLTF File"}
+                  </div>
+                </label>
+                <div className="text-xs text-gray-400 mt-1">
+                  Supported formats: .glb, .gltf
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-gray-600">
+                  <button
+                    onClick={() => setShowModelGenerator(true)}
+                    className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white text-xs text-center transition-colors"
+                  >
+                    ✨ Generate from AI
+                  </button>
+                  <div className="text-xs text-gray-400 mt-1 text-center">
+                    Create 3D models using text descriptions
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {properties.geometry !== "custom_model" && (
+          <>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Color</label>
+              <input
+                type="color"
+                value={`#${Number(properties.color || 0x888888)
+                  .toString(16)
+                  .padStart(6, "0")}`}
+                onChange={(e) =>
+                  onPropertyChange(
+                    "color",
+                    parseInt(e.target.value.slice(1), 16),
+                  )
+                }
+                className="w-full h-8 bg-gray-600 border border-gray-500 rounded cursor-pointer"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  Width
+                </label>
+                <input
+                  type="number"
+                  value={Number(properties.width || 1)}
+                  onChange={(e) =>
+                    onPropertyChange("width", parseFloat(e.target.value) || 1)
+                  }
+                  step="0.1"
+                  className="w-full px-1 py-0.5 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  Height
+                </label>
+                <input
+                  type="number"
+                  value={Number(properties.height || 1)}
+                  onChange={(e) =>
+                    onPropertyChange("height", parseFloat(e.target.value) || 1)
+                  }
+                  step="0.1"
+                  className="w-full px-1 py-0.5 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  Depth
+                </label>
+                <input
+                  type="number"
+                  value={Number(properties.depth || 1)}
+                  onChange={(e) =>
+                    onPropertyChange("depth", parseFloat(e.target.value) || 1)
+                  }
+                  step="0.1"
+                  className="w-full px-1 py-0.5 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Color</label>
-        <input
-          type="color"
-          value={`#${Number(properties.color || 0x888888)
-            .toString(16)
-            .padStart(6, "0")}`}
-          onChange={(e) =>
-            onPropertyChange("color", parseInt(e.target.value.slice(1), 16))
-          }
-          className="w-full h-8 bg-gray-600 border border-gray-500 rounded cursor-pointer"
+      {/* Model Generator Modal */}
+      {showModelGenerator && (
+        <ModelGenerator
+          onModelGenerated={handleModelGenerated}
+          onClose={() => setShowModelGenerator(false)}
         />
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Width</label>
-          <input
-            type="number"
-            value={Number(properties.width || 1)}
-            onChange={(e) =>
-              onPropertyChange("width", parseFloat(e.target.value) || 1)
-            }
-            step="0.1"
-            className="w-full px-1 py-0.5 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Height</label>
-          <input
-            type="number"
-            value={Number(properties.height || 1)}
-            onChange={(e) =>
-              onPropertyChange("height", parseFloat(e.target.value) || 1)
-            }
-            step="0.1"
-            className="w-full px-1 py-0.5 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Depth</label>
-          <input
-            type="number"
-            value={Number(properties.depth || 1)}
-            onChange={(e) =>
-              onPropertyChange("depth", parseFloat(e.target.value) || 1)
-            }
-            step="0.1"
-            className="w-full px-1 py-0.5 bg-gray-600 border border-gray-500 rounded text-xs focus:outline-none focus:border-blue-500"
-          />
-        </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 

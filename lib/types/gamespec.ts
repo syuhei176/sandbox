@@ -72,6 +72,20 @@ export type ComponentType =
   | "audio_source"
   | "particle_system";
 
+// Geometry types for mesh components
+export type GeometryType =
+  | "box"
+  | "sphere"
+  | "plane"
+  | "cylinder"
+  | "custom_model";
+
+// Extended properties for mesh components with custom_model geometry:
+// - model_id: Reference to IndexedDB stored model
+// - model_url: URL to remote GLB/GLTF file
+// - model_data: Base64-encoded GLB data for inline storage
+// - model_prompt: Original text prompt used for AI generation (optional)
+
 export interface ScriptDefinition {
   id: string;
   name: string;

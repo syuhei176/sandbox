@@ -1,6 +1,8 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { GameSpec, World, GameObject, Component } from "../types/gamespec";
 import { LuaVM } from "./lua-vm";
+import { modelStorage } from "../utils/model-storage";
 
 export class GameEngine {
   private scene: THREE.Scene;
@@ -123,7 +125,7 @@ export class GameEngine {
 
     // Add components
     for (const component of gameObject.components) {
-      this.addComponent(object3D, component, gameObject.id);
+      await this.addComponent(object3D, component, gameObject.id);
     }
 
     // Add to scene or parent
@@ -164,14 +166,14 @@ export class GameEngine {
     }
   }
 
-  private addComponent(
+  private async addComponent(
     object3D: THREE.Object3D,
     component: Component,
     gameObjectId: string,
-  ): void {
+  ): Promise<void> {
     switch (component.type) {
       case "mesh":
-        this.addMeshComponent(object3D, component);
+        await this.addMeshComponent(object3D, component);
         break;
       case "light":
         this.addLightComponent(object3D, component);
@@ -183,11 +185,17 @@ export class GameEngine {
     }
   }
 
-  private addMeshComponent(
+  private async addMeshComponent(
     object3D: THREE.Object3D,
     component: Component,
-  ): void {
+  ): Promise<void> {
     const props = component.properties;
+
+    // Handle custom models
+    if (props.geometry === "custom_model") {
+      await this.loadCustomModel(object3D, props);
+      return;
+    }
 
     // Helper to safely get numeric properties
     const getNum = (key: string, defaultValue: number): number => {
@@ -236,6 +244,59 @@ export class GameEngine {
 
     const mesh = new THREE.Mesh(geometry, material);
     object3D.add(mesh);
+  }
+
+  private async loadCustomModel(
+    object3D: THREE.Object3D,
+    props: Record<string, unknown>,
+  ): Promise<void> {
+    const loader = new GLTFLoader();
+    const modelId = props.model_id as string | undefined;
+    const modelUrl = props.model_url as string | undefined;
+    const modelData = props.model_data as string | undefined;
+
+    try {
+      let url: string;
+
+      if (modelId) {
+        // Load from IndexedDB
+        const blob = await modelStorage.getModel(modelId);
+        url = URL.createObjectURL(blob);
+      } else if (modelUrl) {
+        // Use remote URL
+        url = modelUrl;
+      } else if (modelData) {
+        // Use inline base64 data
+        url = modelData;
+      } else {
+        console.error("No model source provided for custom_model");
+        return;
+      }
+
+      // Load the GLTF model
+      const gltf = await loader.loadAsync(url);
+
+      // Add the loaded scene to the object
+      object3D.add(gltf.scene);
+
+      // Clean up blob URL if created
+      if (modelId && url.startsWith("blob:")) {
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Failed to load custom model:", error);
+
+      // Add error placeholder (red wireframe box)
+      const errorGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const errorMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        wireframe: true,
+        opacity: 0.5,
+        transparent: true,
+      });
+      const errorMesh = new THREE.Mesh(errorGeometry, errorMaterial);
+      object3D.add(errorMesh);
+    }
   }
 
   private addLightComponent(

@@ -7,12 +7,19 @@ import {
   useCallback,
   memo,
   useMemo,
+  Suspense,
   type ReactElement,
 } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, TransformControls } from "@react-three/drei";
+import {
+  OrbitControls,
+  Grid,
+  TransformControls,
+  useGLTF,
+} from "@react-three/drei";
 import * as THREE from "three";
 import type { GameObject } from "@/lib/types/gamespec";
+import { modelStorage } from "@/lib/utils/model-storage";
 
 interface Viewport3DProps {
   gameObjects: GameObject[];
@@ -230,6 +237,125 @@ function LightHelper({ properties }: { properties: Record<string, unknown> }) {
   );
 }
 
+// Custom Model Renderer using GLTF
+interface CustomModelRendererProps {
+  properties: Record<string, unknown>;
+  isSelected: boolean;
+  gameObjectId: string;
+  onSelect?: (objectId: string) => void;
+}
+
+function ModelContent({ url }: { url: string }) {
+  const { scene } = useGLTF(url);
+  // Clone scene to allow multiple instances
+  const clonedScene = useMemo(() => scene.clone(), [scene]);
+
+  return <primitive object={clonedScene} />;
+}
+
+function LoadingPlaceholder() {
+  return (
+    <mesh>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshBasicMaterial color="#gray" opacity={0.3} transparent wireframe />
+    </mesh>
+  );
+}
+
+function ErrorPlaceholder() {
+  return (
+    <mesh>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshBasicMaterial color="#ff0000" opacity={0.5} transparent wireframe />
+    </mesh>
+  );
+}
+
+const CustomModelRenderer = memo(function CustomModelRenderer({
+  properties,
+  isSelected,
+  gameObjectId,
+  onSelect,
+}: CustomModelRendererProps) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const modelId = properties.model_id as string | undefined;
+  const modelUrl = properties.model_url as string | undefined;
+  const modelData = properties.model_data as string | undefined;
+
+  // Load from IndexedDB if model_id is provided
+  useEffect(() => {
+    if (modelId) {
+      modelStorage
+        .getModel(modelId)
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+          setError(null);
+        })
+        .catch((err) => {
+          console.error("Failed to load model from IndexedDB:", err);
+          setError(err.message);
+        });
+    }
+
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [modelId]);
+
+  const finalUrl = blobUrl || modelUrl || modelData;
+
+  if (error || !finalUrl) {
+    return <ErrorPlaceholder />;
+  }
+
+  return (
+    <group
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect?.(gameObjectId);
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = "default";
+      }}
+    >
+      <Suspense fallback={<LoadingPlaceholder />}>
+        <ModelContent url={finalUrl} />
+      </Suspense>
+      {isSelected && (
+        <Box args={[1, 1, 1]} visible={false}>
+          <meshBasicMaterial color="#00ffff" opacity={0.2} transparent />
+        </Box>
+      )}
+    </group>
+  );
+});
+
+function Box({
+  args,
+  visible,
+  children,
+}: {
+  args: [number, number, number];
+  visible?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <mesh visible={visible}>
+      <boxGeometry args={args} />
+      {children}
+    </mesh>
+  );
+}
+
 interface MeshComponentProps {
   properties: Record<string, unknown>;
   isSelected: boolean;
@@ -243,6 +369,18 @@ const MeshComponent = memo(function MeshComponent({
   gameObjectId,
   onSelect,
 }: MeshComponentProps) {
+  // Check if this is a custom model
+  if (properties.geometry === "custom_model") {
+    return (
+      <CustomModelRenderer
+        properties={properties}
+        isSelected={isSelected}
+        gameObjectId={gameObjectId}
+        onSelect={onSelect}
+      />
+    );
+  }
+
   const meshRef = useRef<THREE.Mesh>(null);
 
   // Helper to safely get numeric properties
