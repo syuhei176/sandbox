@@ -532,15 +532,17 @@ export default function EditorPage() {
         </div>
 
         {/* Right Panel - Inspector */}
-        <div className="w-80 bg-gray-800 border-l border-gray-700">
+        <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-lg font-semibold">Inspector</h2>
           </div>
-          <Inspector
-            selectedObject={selectedObject}
-            scripts={scripts}
-            onObjectUpdate={handleObjectUpdate}
-          />
+          <div className="flex-1 overflow-y-auto">
+            <Inspector
+              selectedObject={selectedObject}
+              scripts={scripts}
+              onObjectUpdate={handleObjectUpdate}
+            />
+          </div>
         </div>
       </div>
 
