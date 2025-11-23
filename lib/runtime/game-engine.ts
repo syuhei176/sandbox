@@ -386,7 +386,14 @@ export class GameEngine {
       const cameraInstance = this.gameObjects.get(this.mainCameraObjectId);
       if (cameraInstance) {
         this.camera.position.copy(cameraInstance.object3D.position);
-        this.camera.rotation.copy(cameraInstance.object3D.rotation);
+
+        // Look at the player
+        const playerInstance = Array.from(this.gameObjects.values()).find(
+          (inst) => inst.gameObject.name === "Player",
+        );
+        if (playerInstance) {
+          this.camera.lookAt(playerInstance.object3D.position);
+        }
       }
     }
   }
