@@ -17,6 +17,7 @@ import type { GameObject } from "@/lib/types/gamespec";
 interface Viewport3DProps {
   gameObjects: GameObject[];
   selectedObjectId: string | null;
+  onObjectSelect?: (objectId: string) => void;
   onObjectTransformChange?: (
     objectId: string,
     transform: GameObject["transform"],
@@ -26,6 +27,7 @@ interface Viewport3DProps {
 export function Viewport3D({
   gameObjects,
   selectedObjectId,
+  onObjectSelect,
   onObjectTransformChange,
 }: Viewport3DProps) {
   const [transformMode, setTransformMode] = useState<
@@ -77,6 +79,7 @@ export function Viewport3D({
             gameObject={obj}
             isSelected={obj.id === selectedObjectId}
             transformMode={transformMode}
+            onSelect={onObjectSelect}
             onTransformChange={onObjectTransformChange}
           />
         ))}
@@ -92,6 +95,7 @@ interface GameObjectRendererProps {
   gameObject: GameObject;
   isSelected: boolean;
   transformMode: "translate" | "rotate" | "scale";
+  onSelect?: (objectId: string) => void;
   onTransformChange?: (
     objectId: string,
     transform: GameObject["transform"],
@@ -102,6 +106,7 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
   gameObject,
   isSelected,
   transformMode,
+  onSelect,
   onTransformChange,
 }: GameObjectRendererProps) {
   const groupRef = useRef<THREE.Group>(null);
@@ -153,6 +158,8 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
                 key={index}
                 properties={component.properties}
                 isSelected={isSelected}
+                gameObjectId={gameObject.id}
+                onSelect={onSelect}
               />
             );
           }
@@ -172,6 +179,7 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
             gameObject={child}
             isSelected={false}
             transformMode={transformMode}
+            onSelect={onSelect}
             onTransformChange={onTransformChange}
           />
         ))}
@@ -225,11 +233,15 @@ function LightHelper({ properties }: { properties: Record<string, unknown> }) {
 interface MeshComponentProps {
   properties: Record<string, unknown>;
   isSelected: boolean;
+  gameObjectId: string;
+  onSelect?: (objectId: string) => void;
 }
 
 const MeshComponent = memo(function MeshComponent({
   properties,
   isSelected,
+  gameObjectId,
+  onSelect,
 }: MeshComponentProps) {
   const meshRef = useRef<THREE.Mesh>(null);
 
@@ -297,7 +309,20 @@ const MeshComponent = memo(function MeshComponent({
 
   return (
     <>
-      <mesh ref={meshRef}>
+      <mesh
+        ref={meshRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect?.(gameObjectId);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "default";
+        }}
+      >
         {geometry}
         <meshStandardMaterial
           color={color}

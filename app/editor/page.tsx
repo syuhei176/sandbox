@@ -513,6 +513,7 @@ export default function EditorPage() {
             <Viewport3D
               gameObjects={gameObjects}
               selectedObjectId={selectedObjectId}
+              onObjectSelect={handleObjectSelect}
               onObjectTransformChange={handleObjectTransformChange}
             />
           </div>
