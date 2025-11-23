@@ -46,6 +46,13 @@ export class GameEngine {
   }
 
   async loadGame(gameSpec: GameSpec): Promise<void> {
+    // Clear previous state
+    this.scene.clear();
+    this.gameObjects.clear();
+    this.scripts.clear();
+    this.colliders.clear();
+    this.previousCollisions.clear();
+
     // Load all scripts
     for (const script of gameSpec.scripts) {
       this.scripts.set(script.id, script.lua_code);

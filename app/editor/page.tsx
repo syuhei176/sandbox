@@ -47,6 +47,7 @@ export default function EditorPage() {
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [importing, setImporting] = useState(false);
+  const [isPlayMode, setIsPlayMode] = useState(false);
 
   // Load project from URL hash on mount
   useEffect(() => {
@@ -436,16 +437,52 @@ export default function EditorPage() {
           hasSelection={!!selectedObjectId}
           canSaveAs={!!currentProjectName}
         />
-        <div className="ml-auto flex items-center px-2 bg-gray-800">
+        <div className="ml-auto flex items-center gap-2 px-2 bg-gray-800">
+          <button
+            onClick={() => setIsPlayMode(!isPlayMode)}
+            tabIndex={-1}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded text-white text-sm font-medium transition-colors ${
+              isPlayMode
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+            title={isPlayMode ? "Stop Playing" : "Play in Viewport"}
+          >
+            {isPlayMode ? (
+              <>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <rect x="4" y="3" width="3" height="10" />
+                  <rect x="9" y="3" width="3" height="10" />
+                </svg>
+                Stop
+              </>
+            ) : (
+              <>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M3 2l10 6-10 6V2z" />
+                </svg>
+                Play
+              </>
+            )}
+          </button>
           <button
             onClick={handlePlayGame}
-            className="flex items-center gap-2 px-4 py-1.5 bg-green-600 hover:bg-green-700 rounded text-white text-sm font-medium transition-colors"
-            title="Play Game"
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-medium transition-colors"
+            title="Play in Fullscreen"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M3 2l10 6-10 6V2z" />
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1 1v6h2V3h4V1H1zm8 0v2h4v4h2V1H9zM3 9H1v6h6v-2H3V9zm10 4h-4v2h6V9h-2v4z" />
             </svg>
-            Play
           </button>
         </div>
       </div>
@@ -472,9 +509,11 @@ export default function EditorPage() {
           <div className="flex-1 relative">
             <Viewport3D
               gameObjects={gameObjects}
+              scripts={scripts}
               selectedObjectId={selectedObjectId}
               onObjectSelect={handleObjectSelect}
               onObjectTransformChange={handleObjectTransformChange}
+              isPlayMode={isPlayMode}
             />
           </div>
 

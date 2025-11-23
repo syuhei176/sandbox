@@ -18,31 +18,45 @@ import {
   useGLTF,
 } from "@react-three/drei";
 import * as THREE from "three";
-import type { GameObject } from "@/lib/types/gamespec";
+import type {
+  GameObject,
+  ScriptDefinition,
+  GameSpec,
+} from "@/lib/types/gamespec";
 import { modelStorage } from "@/lib/utils/model-storage";
+import { GameEngine } from "@/lib/runtime/game-engine";
 
 interface Viewport3DProps {
   gameObjects: GameObject[];
+  scripts: ScriptDefinition[];
   selectedObjectId: string | null;
   onObjectSelect?: (objectId: string) => void;
   onObjectTransformChange?: (
     objectId: string,
     transform: GameObject["transform"],
   ) => void;
+  isPlayMode?: boolean;
 }
 
 export function Viewport3D({
   gameObjects,
+  scripts,
   selectedObjectId,
   onObjectSelect,
   onObjectTransformChange,
+  isPlayMode = false,
 }: Viewport3DProps) {
   const [transformMode, setTransformMode] = useState<
     "translate" | "rotate" | "scale"
   >("translate");
 
-  // Keyboard shortcuts for transform modes
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const engineRef = useRef<GameEngine | null>(null);
+
+  // Keyboard shortcuts for transform modes (only in edit mode)
   useEffect(() => {
+    if (isPlayMode) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "w") setTransformMode("translate");
       if (e.key === "e") setTransformMode("rotate");
@@ -50,50 +64,154 @@ export function Viewport3D({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPlayMode]);
+
+  // Initialize/cleanup GameEngine for play mode
+  useEffect(() => {
+    if (!isPlayMode) {
+      // Destroy engine when switching to edit mode
+      if (engineRef.current) {
+        engineRef.current.destroy();
+        engineRef.current = null;
+      }
+      return;
+    }
+
+    // Initialize and start engine in play mode
+    const initEngine = async () => {
+      if (!canvasRef.current) return;
+
+      // Always create a fresh engine instance
+      engineRef.current = new GameEngine(canvasRef.current);
+
+      // Create GameSpec from current editor state
+      const gameSpec: GameSpec = {
+        meta: {
+          title: "Editor Playtest",
+          description: "Playing from editor",
+          version: "1.0.0",
+        },
+        players: {
+          min: 1,
+          max: 4,
+          spawn_points: [{ x: 0, y: 1, z: 5 }],
+        },
+        worlds: [
+          {
+            id: "world-1",
+            name: "Main World",
+            environment: {
+              ambient_light: {
+                color: "#ffffff",
+                intensity: 0.5,
+              },
+              directional_light: {
+                color: "#ffffff",
+                intensity: 1,
+                position: { x: 1, y: 1, z: 1 },
+              },
+              skybox: "#87ceeb",
+            },
+            objects: gameObjects,
+          },
+        ],
+        scripts: scripts,
+      };
+
+      await engineRef.current.loadGame(gameSpec);
+      engineRef.current.start();
+
+      // Handle canvas resize
+      const handleResize = () => {
+        if (canvasRef.current && engineRef.current) {
+          const { clientWidth, clientHeight } = canvasRef.current;
+          engineRef.current.resize(clientWidth, clientHeight);
+        }
+      };
+      window.addEventListener("resize", handleResize);
+      handleResize();
+
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    };
+
+    initEngine();
+  }, [isPlayMode, gameObjects, scripts]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (engineRef.current) {
+        engineRef.current.destroy();
+        engineRef.current = null;
+      }
+    };
   }, []);
 
   return (
     <div className="w-full h-full bg-gray-900 relative">
-      {/* Transform Mode Indicator */}
-      <div className="absolute top-4 left-4 z-10 bg-black/50 text-white px-3 py-2 rounded text-sm">
-        Mode: {transformMode.toUpperCase()} (W/E/R to switch)
-      </div>
+      {/* Transform Mode Indicator (Edit Mode only) */}
+      {!isPlayMode && (
+        <div className="absolute top-4 left-4 z-10 bg-black/50 text-white px-3 py-2 rounded text-sm">
+          Mode: {transformMode.toUpperCase()} (W/E/R to switch)
+        </div>
+      )}
 
-      <Canvas camera={{ position: [5, 5, 5], fov: 75 }}>
-        {/* Lighting */}
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} intensity={0.8} />
+      {/* Play Mode Indicator */}
+      {isPlayMode && (
+        <div className="absolute top-4 left-4 z-10 bg-green-600/80 text-white px-3 py-2 rounded text-sm font-semibold">
+          ▶ PLAY MODE
+        </div>
+      )}
 
-        {/* Grid */}
-        <Grid
-          args={[20, 20]}
-          cellSize={1}
-          cellThickness={0.5}
-          cellColor="#6b7280"
-          sectionSize={5}
-          sectionThickness={1}
-          sectionColor="#9ca3af"
-          fadeDistance={30}
-          fadeStrength={1}
-          followCamera={false}
-          infiniteGrid={true}
-        />
+      {/* Edit Mode Canvas (React Three Fiber) */}
+      {!isPlayMode && (
+        <Canvas camera={{ position: [5, 5, 5], fov: 75 }}>
+          {/* Lighting */}
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[10, 10, 5]} intensity={0.8} />
 
-        {/* Game Objects */}
-        {gameObjects.map((obj) => (
-          <GameObjectRenderer
-            key={obj.id}
-            gameObject={obj}
-            isSelected={obj.id === selectedObjectId}
-            transformMode={transformMode}
-            onSelect={onObjectSelect}
-            onTransformChange={onObjectTransformChange}
+          {/* Grid */}
+          <Grid
+            args={[20, 20]}
+            cellSize={1}
+            cellThickness={0.5}
+            cellColor="#6b7280"
+            sectionSize={5}
+            sectionThickness={1}
+            sectionColor="#9ca3af"
+            fadeDistance={30}
+            fadeStrength={1}
+            followCamera={false}
+            infiniteGrid={true}
           />
-        ))}
 
-        {/* Camera Controls */}
-        <OrbitControls makeDefault />
-      </Canvas>
+          {/* Game Objects */}
+          {gameObjects.map((obj) => (
+            <GameObjectRenderer
+              key={obj.id}
+              gameObject={obj}
+              isSelected={obj.id === selectedObjectId}
+              transformMode={transformMode}
+              onSelect={onObjectSelect}
+              onTransformChange={onObjectTransformChange}
+            />
+          ))}
+
+          {/* Camera Controls */}
+          <OrbitControls makeDefault />
+        </Canvas>
+      )}
+
+      {/* Play Mode Canvas (Raw Three.js) */}
+      {isPlayMode && (
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full"
+          style={{ display: "block" }}
+        />
+      )}
     </div>
   );
 }
