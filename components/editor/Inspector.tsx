@@ -537,7 +537,7 @@ function MeshComponentEditor({
     }
   };
 
-  const handleModelGenerated = (modelId: string, modelUrl: string) => {
+  const handleModelGenerated = (modelId: string) => {
     // Update GameObject properties with generated model
     onPropertyChange("model_id", modelId);
     onPropertyChange("geometry", "custom_model");

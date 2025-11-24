@@ -112,7 +112,8 @@ class ModelStorage {
       request.onsuccess = () => {
         const model = request.result as StoredModel | undefined;
         if (model) {
-          const { data, ...metadata } = model;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { data: _data, ...metadata } = model;
           resolve(metadata);
         } else {
           resolve(null);
@@ -136,7 +137,8 @@ class ModelStorage {
       request.onsuccess = () => {
         const models = request.result as StoredModel[];
         // Exclude binary data from list to save memory
-        const metadata = models.map(({ data, ...meta }) => meta);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const metadata = models.map(({ data: _data, ...meta }) => meta);
         resolve(metadata);
       };
       request.onerror = () => reject(request.error);

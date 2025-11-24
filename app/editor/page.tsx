@@ -46,7 +46,6 @@ export default function EditorPage() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [projectName, setProjectName] = useState("");
-  const [importing, setImporting] = useState(false);
   const [isPlayMode, setIsPlayMode] = useState(false);
 
   // Load project from URL hash on mount
@@ -63,7 +62,6 @@ export default function EditorPage() {
         setCurrentProjectName(project.name);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-save state changes (debounced) - only for existing projects
