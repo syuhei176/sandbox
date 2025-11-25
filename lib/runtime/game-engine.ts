@@ -11,6 +11,7 @@ interface ColliderData {
   boundingSphere?: THREE.Sphere;
   isTrigger: boolean;
   layer: number;
+  originalRadius?: number;
 }
 
 export class GameEngine {
@@ -361,7 +362,7 @@ export class GameEngine {
       };
 
       // Store original radius for updates
-      (colliderData as any).originalRadius = radius;
+      colliderData.originalRadius = radius;
     } else if (shape === "box" || shape === "auto") {
       // Create box collider (AABB)
       const box = new THREE.Box3();
@@ -414,9 +415,9 @@ export class GameEngine {
           instance.object3D.scale.z,
         );
 
-        if ((collider as any).originalRadius) {
+        if (collider.originalRadius && collider.boundingSphere) {
           collider.boundingSphere.radius =
-            (collider as any).originalRadius * maxScale;
+            collider.originalRadius * maxScale;
         }
       }
     }

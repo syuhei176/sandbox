@@ -8,9 +8,8 @@ import {
   memo,
   useMemo,
   Suspense,
-  type ReactElement,
 } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import {
   OrbitControls,
   Grid,
@@ -235,9 +234,6 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
   onTransformChange,
 }: GameObjectRendererProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const orbitControlsRef = useRef<any>(null);
-
-  const { camera, gl } = useThree();
 
   useEffect(() => {
     if (groupRef.current) {
@@ -310,9 +306,10 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
         ))}
       </group>
 
-      {isSelected && groupRef.current && (
+      {/* eslint-disable react-hooks/refs */}
+      {isSelected && (
         <TransformControls
-          object={groupRef.current}
+          object={groupRef.current!}
           mode={transformMode}
           translationSnap={0.5}
           rotationSnap={Math.PI / 12}
@@ -320,6 +317,7 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
           onObjectChange={handleTransformChange}
         />
       )}
+      {/* eslint-enable react-hooks/refs */}
     </>
   );
 });
@@ -423,6 +421,7 @@ const CustomModelRenderer = memo(function CustomModelRenderer({
         URL.revokeObjectURL(blobUrl);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelId]);
 
   const finalUrl = blobUrl || modelUrl || modelData;
@@ -499,13 +498,32 @@ const MeshComponent = memo(function MeshComponent({
     );
   }
 
+  return (
+    <StandardMeshRenderer
+      properties={properties}
+      isSelected={isSelected}
+      gameObjectId={gameObjectId}
+      onSelect={onSelect}
+    />
+  );
+});
+
+const StandardMeshRenderer = memo(function StandardMeshRenderer({
+  properties,
+  isSelected,
+  gameObjectId,
+  onSelect,
+}: MeshComponentProps) {
   const meshRef = useRef<THREE.Mesh>(null);
 
   // Helper to safely get numeric properties
-  const getNum = (key: string, defaultValue: number): number => {
-    const value = properties[key];
-    return typeof value === "number" ? value : defaultValue;
-  };
+  const getNum = useCallback(
+    (key: string, defaultValue: number): number => {
+      const value = properties[key];
+      return typeof value === "number" ? value : defaultValue;
+    },
+    [properties],
+  );
 
   // Memoize geometry
   const geometry = useMemo(() => {
@@ -538,30 +556,11 @@ const MeshComponent = memo(function MeshComponent({
       default:
         return <boxGeometry args={[1, 1, 1]} />;
     }
-  }, [
-    properties.geometry,
-    properties.width,
-    properties.height,
-    properties.depth,
-    properties.radius,
-    properties.radiusTop,
-    properties.radiusBottom,
-  ]);
+  }, [getNum, properties.geometry]);
 
   const color = getNum("color", 0xffffff);
   const metalness = getNum("metalness", 0);
   const roughness = getNum("roughness", 0.5);
-
-  // Memoize bounding box helper
-  const boundingBoxHelper = useMemo(() => {
-    if (!isSelected || !meshRef.current) return null;
-
-    return (
-      <boxHelper args={[meshRef.current, 0x00ffff]}>
-        <lineBasicMaterial color="#00ffff" linewidth={2} />
-      </boxHelper>
-    );
-  }, [isSelected]);
 
   return (
     <>
@@ -588,12 +587,14 @@ const MeshComponent = memo(function MeshComponent({
           emissiveIntensity={isSelected ? 0.3 : 0}
         />
       </mesh>
+      {/* eslint-disable react-hooks/refs */}
       {isSelected && meshRef.current && (
         <lineSegments>
           <edgesGeometry attach="geometry" args={[meshRef.current.geometry]} />
           <lineBasicMaterial attach="material" color="#00ffff" linewidth={2} />
         </lineSegments>
       )}
+      {/* eslint-enable react-hooks/refs */}
     </>
   );
 });
