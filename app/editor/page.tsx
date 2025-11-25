@@ -310,7 +310,6 @@ export default function EditorPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setImporting(true);
     try {
       const project = await importProjectFromJSON(file);
       if (project && project.gameSpec) {
@@ -326,7 +325,6 @@ export default function EditorPage() {
       console.error("Failed to import project:", error);
       alert("Failed to import project. Please check the file format.");
     } finally {
-      setImporting(false);
       // Reset file input
       event.target.value = "";
     }
