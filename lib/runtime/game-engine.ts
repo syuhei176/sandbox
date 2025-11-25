@@ -23,11 +23,17 @@ export class GameEngine {
   private animationFrameId: number | null = null;
   private lastTime: number = 0;
   private keyboardState: { [key: string]: boolean } = {};
+  private mouseMovement: { x: number; y: number } = { x: 0, y: 0 };
+  private mouseClick: boolean = false;
+  private isPointerLocked: boolean = false;
+  private canvas: HTMLCanvasElement;
   private mainCameraObjectId: string | null = null;
   private colliders: Map<string, ColliderData> = new Map();
   private previousCollisions: Set<string> = new Set();
 
   constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+
     // Initialize scene
     this.scene = new THREE.Scene();
 
@@ -416,8 +422,7 @@ export class GameEngine {
         );
 
         if (collider.originalRadius && collider.boundingSphere) {
-          collider.boundingSphere.radius =
-            collider.originalRadius * maxScale;
+          collider.boundingSphere.radius = collider.originalRadius * maxScale;
         }
       }
     }
@@ -662,6 +667,12 @@ export class GameEngine {
   private setupInputListeners(): void {
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
+    this.canvas.addEventListener("click", this.handleCanvasClick);
+    document.addEventListener(
+      "pointerlockchange",
+      this.handlePointerLockChange,
+    );
+    document.addEventListener("mousemove", this.handleMouseMove);
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
@@ -671,6 +682,36 @@ export class GameEngine {
   private handleKeyUp = (event: KeyboardEvent): void => {
     this.keyboardState[event.key.toLowerCase()] = false;
   };
+
+  private handleCanvasClick = (): void => {
+    this.mouseClick = true;
+    // Request pointer lock on click if not already locked
+    if (!this.isPointerLocked) {
+      this.canvas.requestPointerLock();
+    }
+  };
+
+  private handlePointerLockChange = (): void => {
+    this.isPointerLocked = document.pointerLockElement === this.canvas;
+  };
+
+  private handleMouseMove = (event: MouseEvent): void => {
+    if (this.isPointerLocked) {
+      this.mouseMovement.x = event.movementX;
+      this.mouseMovement.y = event.movementY;
+    }
+  };
+
+  // Public method to allow Lua scripts to request pointer lock
+  public requestPointerLock(): void {
+    this.canvas.requestPointerLock();
+  }
+
+  public exitPointerLock(): void {
+    if (this.isPointerLocked) {
+      document.exitPointerLock();
+    }
+  }
 
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
@@ -696,6 +737,8 @@ export class GameEngine {
       if (instance.luaVM) {
         // Set input state before calling update
         instance.luaVM.setInputState(this.keyboardState);
+        instance.luaVM.setMouseMovement(this.mouseMovement);
+        instance.luaVM.setMouseClick(this.mouseClick);
 
         // Call Lua update
         instance.luaVM.onUpdate(deltaTime);
@@ -753,6 +796,11 @@ export class GameEngine {
     // Update colliders and check collisions
     this.updateColliders();
     this.checkCollisions();
+
+    // Reset per-frame mouse state
+    this.mouseMovement.x = 0;
+    this.mouseMovement.y = 0;
+    this.mouseClick = false;
   }
 
   private render(): void {
@@ -790,6 +838,15 @@ export class GameEngine {
     // Remove input listeners
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
+    this.canvas.removeEventListener("click", this.handleCanvasClick);
+    document.removeEventListener(
+      "pointerlockchange",
+      this.handlePointerLockChange,
+    );
+    document.removeEventListener("mousemove", this.handleMouseMove);
+
+    // Exit pointer lock if active
+    this.exitPointerLock();
 
     // Destroy all Lua VMs
     for (const instance of this.gameObjects.values()) {

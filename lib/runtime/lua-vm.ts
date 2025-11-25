@@ -157,6 +157,32 @@ end
     this.lua.lua_setglobal(this.L, this.to_luastring("input"));
   }
 
+  setMouseMovement(movement: { x: number; y: number }): void {
+    if (!this.L) return;
+
+    // Create a Lua table for mouse_movement
+    this.lua.lua_newtable(this.L);
+
+    this.lua.lua_pushstring(this.L, this.to_luastring("x"));
+    this.lua.lua_pushnumber(this.L, movement.x);
+    this.lua.lua_settable(this.L, -3);
+
+    this.lua.lua_pushstring(this.L, this.to_luastring("y"));
+    this.lua.lua_pushnumber(this.L, movement.y);
+    this.lua.lua_settable(this.L, -3);
+
+    // Set as global 'mouse_movement'
+    this.lua.lua_setglobal(this.L, this.to_luastring("mouse_movement"));
+  }
+
+  setMouseClick(clicked: boolean): void {
+    if (!this.L) return;
+
+    // Set as global boolean 'mouse_click'
+    this.lua.lua_pushboolean(this.L, clicked);
+    this.lua.lua_setglobal(this.L, this.to_luastring("mouse_click"));
+  }
+
   setAllGameObjects(gameObjects: Map<string, GameObjectInstance>): void {
     this.allGameObjects = gameObjects;
 

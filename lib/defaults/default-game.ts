@@ -1,6 +1,10 @@
 import type { GameObject, ScriptDefinition } from "../types/gamespec";
+import { getTemplateById } from "../templates";
 
-export const defaultGameObjects: GameObject[] = [
+// Use the basic-platform template as default
+const basicTemplate = getTemplateById("basic-platform");
+
+export const defaultGameObjects: GameObject[] = basicTemplate?.gameObjects || [
   // Ground
   {
     id: "obj-ground",
@@ -384,7 +388,7 @@ export const defaultGameObjects: GameObject[] = [
   },
 ];
 
-export const defaultScripts: ScriptDefinition[] = [
+export const defaultScripts: ScriptDefinition[] = basicTemplate?.scripts || [
   {
     id: "script-player",
     name: "PlayerController",

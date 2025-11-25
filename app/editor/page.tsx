@@ -27,6 +27,11 @@ import {
   defaultGameObjects,
   defaultScripts,
 } from "@/lib/defaults/default-game";
+import {
+  gameTemplates,
+  getTemplateById,
+  type GameTemplate,
+} from "@/lib/templates";
 
 export default function EditorPage() {
   const router = useRouter();
@@ -45,6 +50,7 @@ export default function EditorPage() {
   );
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [isPlayMode, setIsPlayMode] = useState(false);
 
@@ -387,14 +393,19 @@ export default function EditorPage() {
         "Are you sure you want to create a new project? Unsaved changes will be lost.",
       )
     ) {
-      setGameObjects(defaultGameObjects);
-      setScripts(defaultScripts);
-      setSelectedObjectId(null);
-      setSelectedScriptId(null);
-      setCurrentProjectId(null);
-      setCurrentProjectName(null);
-      window.location.hash = "";
+      setShowTemplateDialog(true);
     }
+  };
+
+  const handleSelectTemplate = (template: GameTemplate) => {
+    setGameObjects(template.gameObjects);
+    setScripts(template.scripts);
+    setSelectedObjectId(null);
+    setSelectedScriptId(null);
+    setCurrentProjectId(null);
+    setCurrentProjectName(null);
+    window.location.hash = "";
+    setShowTemplateDialog(false);
   };
 
   return (
@@ -575,6 +586,88 @@ export default function EditorPage() {
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-white transition-colors"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Selection Dialog */}
+      {showTemplateDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-[800px] max-w-[90vw] border border-gray-700">
+            <h3 className="text-xl font-semibold mb-4">テンプレートを選択</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {gameTemplates.map((template) => (
+                <button
+                  key={template.id}
+                  onClick={() => handleSelectTemplate(template)}
+                  className="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 text-left transition-colors border-2 border-transparent hover:border-blue-500"
+                >
+                  <div className="aspect-video bg-gray-900 rounded mb-3 flex items-center justify-center">
+                    {template.id === "basic-platform" && (
+                      <svg
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-green-500"
+                      >
+                        <rect x="4" y="18" width="16" height="2" />
+                        <rect x="8" y="14" width="8" height="2" />
+                        <circle cx="12" cy="10" r="2" />
+                      </svg>
+                    )}
+                    {template.id === "fps" && (
+                      <svg
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-red-500"
+                      >
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
+                        <circle cx="12" cy="12" r="3" fill="white" />
+                      </svg>
+                    )}
+                    {template.id === "empty" && (
+                      <svg
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-gray-500"
+                      >
+                        <rect
+                          x="3"
+                          y="3"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          ry="2"
+                        />
+                        <line x1="9" y1="9" x2="15" y2="15" />
+                        <line x1="15" y1="9" x2="9" y2="15" />
+                      </svg>
+                    )}
+                  </div>
+                  <h4 className="font-semibold text-lg mb-1">
+                    {template.name}
+                  </h4>
+                  <p className="text-sm text-gray-400">
+                    {template.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowTemplateDialog(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+              >
+                キャンセル
               </button>
             </div>
           </div>
