@@ -43,13 +43,15 @@ const sampleGameSpec: GameSpec = {
   scripts: defaultScripts,
 };
 
-
 export default function RuntimePage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<
+    ReturnType<GameEngine["getDebugInfo"]>
+  >({});
 
   // Initialize gameSpec from localStorage or use sample
   const [gameSpec] = useState<GameSpec>(() => {
@@ -113,6 +115,26 @@ export default function RuntimePage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Update debug info every frame
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const updateDebugInfo = () => {
+      if (engineRef.current) {
+        setDebugInfo(engineRef.current.getDebugInfo());
+      }
+      animationFrameId = requestAnimationFrame(updateDebugInfo);
+    };
+
+    updateDebugInfo();
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, []);
+
   return (
     <div className="relative w-screen h-screen bg-black">
       <canvas
@@ -158,6 +180,32 @@ export default function RuntimePage() {
       <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white p-3 rounded text-xs">
         <p>Camera controls: Click and drag to rotate</p>
       </div>
+
+      {/* Debug HUD */}
+      {debugInfo.cameraRot && (
+        <div className="absolute top-20 right-4 bg-black bg-opacity-75 text-white p-4 rounded text-sm font-mono space-y-1">
+          <div className="font-bold mb-2 text-green-400">Debug Info</div>
+          <div>
+            Camera Y: {debugInfo.cameraRot.y.toFixed(4)} rad (
+            {((debugInfo.cameraRot.y * 180) / Math.PI).toFixed(1)}°)
+          </div>
+          {debugInfo.playerCameraRot && (
+            <div
+              className={
+                debugInfo.playerCameraRot.y !== debugInfo.cameraRot.y
+                  ? "text-red-400"
+                  : "text-green-400"
+              }
+            >
+              Player sees: {debugInfo.playerCameraRot.y.toFixed(4)} rad (
+              {((debugInfo.playerCameraRot.y * 180) / Math.PI).toFixed(1)}°)
+            </div>
+          )}
+          {debugInfo.cameraRot.y !== debugInfo.playerCameraRot?.y && (
+            <div className="text-red-400 mt-2">⚠️ MISMATCH!</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

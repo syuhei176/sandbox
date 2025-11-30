@@ -100,7 +100,7 @@ end`;
       </div>
 
       {/* Code Editor */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-auto">
         {selectedScript ? (
           <CodeEditor
             value={selectedScript.lua_code}
@@ -113,10 +113,9 @@ end`;
               backgroundColor: "#1f2937",
               fontFamily:
                 "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-              height: "100%",
-              overflow: "auto",
+              minHeight: "100%",
             }}
-            className="w-full h-full"
+            className="w-full"
           />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500 text-sm">
