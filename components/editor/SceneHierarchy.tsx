@@ -7,6 +7,7 @@ interface SceneHierarchyProps {
   onAddObject: () => void;
   onDuplicateObject: (objectId: string) => void;
   onDeleteObject: (objectId: string) => void;
+  onCreatePrefab?: () => void;
 }
 
 export function SceneHierarchy({
@@ -16,6 +17,7 @@ export function SceneHierarchy({
   onAddObject,
   onDuplicateObject,
   onDeleteObject,
+  onCreatePrefab,
 }: SceneHierarchyProps) {
   return (
     <div className="flex-1 flex flex-col">
@@ -56,6 +58,18 @@ export function SceneHierarchy({
             />
           </svg>
         </button>
+        {onCreatePrefab && (
+          <button
+            onClick={onCreatePrefab}
+            disabled={!selectedObjectId}
+            className="p-1 hover:bg-green-900/50 text-green-400 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ml-auto"
+            title="Create Prefab from Selected"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 2L2 5v6c0 3.7 2.56 7.16 6 8 3.44-.84 6-4.3 6-8V5l-6-3z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* GameObject List */}

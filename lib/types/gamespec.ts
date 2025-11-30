@@ -3,6 +3,17 @@ export interface GameSpec {
   players: PlayersConfig;
   worlds: World[];
   scripts: ScriptDefinition[];
+  prefabs?: PrefabDefinition[];
+}
+
+export interface PrefabDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  thumbnail?: string; // Base64 encoded preview image
+  template: GameObject; // The GameObject template
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GameMeta {
@@ -50,6 +61,7 @@ export interface GameObject {
   components: Component[];
   script_id?: string;
   children?: GameObject[];
+  prefab_id?: string; // Reference to the source prefab if instantiated from one
 }
 
 export interface Transform {
