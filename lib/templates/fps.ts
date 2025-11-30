@@ -410,6 +410,8 @@ local gravity = -20.0
 local jump_force = 10.0
 local velocity_y = 0
 local is_grounded = true
+local rotation_y = 0
+local mouse_sensitivity = 0.002
 
 function on_start()
   print("FPS Player Started - WASD to move, Space to jump")
@@ -420,19 +422,19 @@ function on_update(dt)
 
   local pos = gameobject.transform.position
 
-  -- Get camera rotation
-  local camera = find_gameobject("FPSCamera")
-  local rotation_y = 0
-  if camera then
-    rotation_y = camera.transform.rotation.y
+  -- Update rotation from mouse input
+  if mouse_movement and mouse_movement.x ~= 0 then
+    rotation_y = rotation_y - mouse_movement.x * mouse_sensitivity
   end
+  -- Store rotation in transform so camera can read it
+  gameobject.transform.rotation.y = rotation_y
 
-  -- Calculate movement vectors based on camera rotation
-  -- Tested formula: forward = (sin(y), -cos(y)), right = (cos(y), sin(y))
-  local forward_x = math.sin(rotation_y)
+  -- Calculate movement vectors based on rotation
+  -- Three.js: rotation_y negative = looking right, so negate sin for forward_x
+  local forward_x = -math.sin(rotation_y)
   local forward_z = -math.cos(rotation_y)
   local right_x = math.cos(rotation_y)
-  local right_z = math.sin(rotation_y)
+  local right_z = -math.sin(rotation_y)
 
   local move_x = 0
   local move_z = 0
@@ -485,6 +487,13 @@ function on_update(dt)
   if gameobject.transform.position.x > 24 then gameobject.transform.position.x = 24 end
   if gameobject.transform.position.z < -24 then gameobject.transform.position.z = -24 end
   if gameobject.transform.position.z > 24 then gameobject.transform.position.z = 24 end
+
+  -- Debug output
+  local camera = find_gameobject("FPSCamera")
+  local cam_pos = camera and camera.transform.position or {x=0,y=0,z=0}
+  local cam_rot = camera and camera.transform.rotation or {x=0,y=0,z=0}
+  print(string.format("Player pos=(%.2f, %.2f, %.2f) rot_y=%.2f", pos.x, pos.y, pos.z, math.deg(rotation_y)))
+  print(string.format("Camera pos=(%.2f, %.2f, %.2f) rot_y=%.2f", cam_pos.x, cam_pos.y, cam_pos.z, math.deg(cam_rot.y)))
 end
 
 function on_collision(other)
@@ -503,7 +512,6 @@ end`,
       lua_code: `-- FPS Camera Controller
 local mouse_sensitivity = 0.002
 local rotation_x = 0
-local rotation_y = 0
 
 function on_start()
   print("FPS Camera Started - Mouse to look around")
@@ -512,25 +520,30 @@ end
 function on_update(dt)
   if not gameobject then return end
 
-  -- Mouse look
-  if mouse_movement and (mouse_movement.x ~= 0 or mouse_movement.y ~= 0) then
-    rotation_y = rotation_y - mouse_movement.x * mouse_sensitivity
+  -- Get player for position and Y rotation
+  local player = find_gameobject("FPSPlayer")
+  if not player then return end
+
+  -- Handle vertical mouse look (X rotation) only - Y rotation comes from player
+  if mouse_movement and mouse_movement.y ~= 0 then
     rotation_x = rotation_x - mouse_movement.y * mouse_sensitivity
 
     if rotation_x > 1.5 then rotation_x = 1.5 end
     if rotation_x < -1.5 then rotation_x = -1.5 end
-
-    gameobject.transform.rotation.x = rotation_x
-    gameobject.transform.rotation.y = rotation_y
   end
 
-  -- Follow player
-  local player = find_gameobject("FPSPlayer")
-  if player then
-    gameobject.transform.position.x = player.transform.position.x
-    gameobject.transform.position.y = player.transform.position.y + 0.6
-    gameobject.transform.position.z = player.transform.position.z
-  end
+  -- Follow player position
+  gameobject.transform.position.x = player.transform.position.x
+  gameobject.transform.position.y = player.transform.position.y + 0.6
+  gameobject.transform.position.z = player.transform.position.z
+
+  -- Use player's Y rotation, camera's X rotation (vertical look)
+  gameobject.transform.rotation.x = rotation_x
+  gameobject.transform.rotation.y = player.transform.rotation.y
+
+  -- Debug output
+  local rotation_y_deg = math.deg(player.transform.rotation.y)
+  print(string.format("Camera: rot_y=%.4f rad (%.1f deg)", player.transform.rotation.y, rotation_y_deg))
 end`,
     },
     {

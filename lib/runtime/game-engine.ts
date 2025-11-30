@@ -649,12 +649,15 @@ export class GameEngine {
       getNum("near", 0.1),
       getNum("far", 1000),
     );
-    object3D.add(camera);
 
     // Optionally use this as the main camera
     if (props.isMainCamera) {
+      // Don't add to object3D - we'll control position/rotation directly in update()
       this.camera = camera;
       this.mainCameraObjectId = gameObjectId;
+    } else {
+      // Non-main cameras are added to object3D as children
+      object3D.add(camera);
     }
   }
 
@@ -732,6 +735,13 @@ export class GameEngine {
       }
     }
 
+    // Update all_gameobjects table BEFORE script execution so find_gameobject() returns current-frame data
+    for (const instance of this.gameObjects.values()) {
+      if (instance.luaVM) {
+        instance.luaVM.setAllGameObjects(this.gameObjects);
+      }
+    }
+
     // Update all game objects with scripts
     for (const instance of this.gameObjects.values()) {
       if (instance.luaVM) {
@@ -767,28 +777,41 @@ export class GameEngine {
           instance.gameObject.transform.rotation = { ...transform.rotation };
           instance.gameObject.transform.scale = { ...transform.scale };
         }
-      }
-    }
 
-    // Now update all_gameobjects table with latest positions for scripts that reference other objects
-    for (const instance of this.gameObjects.values()) {
-      if (instance.luaVM) {
+        // Update all_gameobjects immediately after each script execution
+        // so subsequent scripts in this frame can see the updated values
         instance.luaVM.setAllGameObjects(this.gameObjects);
       }
     }
 
-    // Sync main camera position from its GameObject
+    // Sync main camera position and rotation from its GameObject
     if (this.mainCameraObjectId) {
       const cameraInstance = this.gameObjects.get(this.mainCameraObjectId);
       if (cameraInstance) {
-        this.camera.position.copy(cameraInstance.object3D.position);
+        // Use gameObject.transform for both position and rotation (updated by Lua)
+        this.camera.position.set(
+          cameraInstance.gameObject.transform.position.x,
+          cameraInstance.gameObject.transform.position.y,
+          cameraInstance.gameObject.transform.position.z,
+        );
+        this.camera.rotation.set(
+          cameraInstance.gameObject.transform.rotation.x,
+          cameraInstance.gameObject.transform.rotation.y,
+          cameraInstance.gameObject.transform.rotation.z,
+        );
+        // Debug: log actual Three.js camera values
+        console.log(
+          `Three.js Camera: pos=(${this.camera.position.x.toFixed(2)}, ${this.camera.position.y.toFixed(2)}, ${this.camera.position.z.toFixed(2)}) rot_y=${((this.camera.rotation.y * 180) / Math.PI).toFixed(2)}`,
+        );
 
-        // Look at the player
+        // Debug: log FPSPlayer object3D position
         const playerInstance = Array.from(this.gameObjects.values()).find(
-          (inst) => inst.gameObject.name === "Player",
+          (inst) => inst.gameObject.name === "FPSPlayer",
         );
         if (playerInstance) {
-          this.camera.lookAt(playerInstance.object3D.position);
+          console.log(
+            `FPSPlayer object3D: pos=(${playerInstance.object3D.position.x.toFixed(2)}, ${playerInstance.object3D.position.y.toFixed(2)}, ${playerInstance.object3D.position.z.toFixed(2)})`,
+          );
         }
       }
     }
@@ -830,6 +853,43 @@ export class GameEngine {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+  }
+
+  getDebugInfo(): {
+    playerPos?: { x: number; y: number; z: number };
+    cameraPos?: { x: number; y: number; z: number };
+    cameraRot?: { x: number; y: number; z: number };
+    playerCameraRot?: { y: number };
+  } {
+    const info: ReturnType<typeof this.getDebugInfo> = {};
+
+    // Get FPS player position
+    const player = Array.from(this.gameObjects.values()).find(
+      (inst) => inst.gameObject.name === "FPSPlayer",
+    );
+    if (player) {
+      info.playerPos = { ...player.gameObject.transform.position };
+    }
+
+    // Get FPS camera position and rotation
+    const camera = Array.from(this.gameObjects.values()).find(
+      (inst) => inst.gameObject.name === "FPSCamera",
+    );
+    if (camera) {
+      info.cameraPos = { ...camera.gameObject.transform.position };
+      info.cameraRot = { ...camera.gameObject.transform.rotation };
+    }
+
+    // Get player's view of camera rotation (what find_gameobject returns)
+    // by directly checking what the player script would see via find_gameobject()
+    if (player && camera) {
+      // This simulates what find_gameobject("FPSCamera") returns in the player script
+      info.playerCameraRot = {
+        y: camera.gameObject.transform.rotation.y,
+      };
+    }
+
+    return info;
   }
 
   destroy(): void {

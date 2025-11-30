@@ -1,10 +1,10 @@
 import type { GameObject, ScriptDefinition } from "../types/gamespec";
 import { getTemplateById } from "../templates";
 
-// Use the basic-platform template as default
-const basicTemplate = getTemplateById("basic-platform");
+// Use the FPS template as default
+const fpsTemplate = getTemplateById("fps");
 
-export const defaultGameObjects: GameObject[] = basicTemplate?.gameObjects || [
+export const defaultGameObjects: GameObject[] = fpsTemplate?.gameObjects || [
   // Ground
   {
     id: "obj-ground",
@@ -388,7 +388,7 @@ export const defaultGameObjects: GameObject[] = basicTemplate?.gameObjects || [
   },
 ];
 
-export const defaultScripts: ScriptDefinition[] = basicTemplate?.scripts || [
+export const defaultScripts: ScriptDefinition[] = fpsTemplate?.scripts || [
   {
     id: "script-player",
     name: "PlayerController",

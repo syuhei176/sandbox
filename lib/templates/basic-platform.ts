@@ -3,7 +3,8 @@ import type { GameTemplate } from "./types";
 export const basicPlatformTemplate: GameTemplate = {
   id: "basic-platform",
   name: "3D Platform Game",
-  description: "シンプルな3Dプラットフォームゲーム。プレイヤーがコインを集めます。",
+  description:
+    "シンプルな3Dプラットフォームゲーム。プレイヤーがコインを集めます。",
   gameObjects: [
     // Ground
     {
@@ -491,6 +492,15 @@ function on_update(dt)
     gameobject.transform.position.x = current_x + (target_x - current_x) * smoothness * dt
     gameobject.transform.position.y = current_y + (target_y - current_y) * smoothness * dt
     gameobject.transform.position.z = current_z + (target_z - current_z) * smoothness * dt
+
+    -- Look at player
+    local dx = player.transform.position.x - gameobject.transform.position.x
+    local dy = player.transform.position.y - gameobject.transform.position.y
+    local dz = player.transform.position.z - gameobject.transform.position.z
+    local dist_xz = math.sqrt(dx * dx + dz * dz)
+
+    gameobject.transform.rotation.x = -math.atan2(dy, dist_xz)
+    gameobject.transform.rotation.y = math.atan2(dx, dz)
   end
 end`,
     },
