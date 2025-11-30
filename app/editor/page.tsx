@@ -13,6 +13,7 @@ import type {
   ScriptDefinition,
   GameSpec,
   PrefabDefinition,
+  Vector3,
 } from "@/lib/types/gamespec";
 import {
   createPrefabFromGameObject,
@@ -291,6 +292,21 @@ export default function EditorPage() {
       setGameObjects((prev) => [...prev, instance]);
       setSelectedObjectId(instance.id);
       setLeftPanelTab("hierarchy"); // Switch back to hierarchy
+    },
+    [prefabs],
+  );
+
+  const handlePrefabDropInViewport = useCallback(
+    (prefabId: string, position: Vector3) => {
+      const prefab = prefabs.find((p) => p.id === prefabId);
+      if (!prefab) return;
+
+      const instance = instantiatePrefab(prefab);
+      instance.transform.position = position;
+
+      setGameObjects((prev) => [...prev, instance]);
+      setSelectedObjectId(instance.id);
+      setLeftPanelTab("hierarchy");
     },
     [prefabs],
   );
@@ -640,6 +656,7 @@ export default function EditorPage() {
               onObjectSelect={handleObjectSelect}
               onObjectTransformChange={handleObjectTransformChange}
               isPlayMode={isPlayMode}
+              onPrefabDrop={handlePrefabDropInViewport}
             />
           </div>
 

@@ -9,7 +9,7 @@ import {
   useMemo,
   Suspense,
 } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import {
   OrbitControls,
   Grid,
@@ -21,9 +21,54 @@ import type {
   GameObject,
   ScriptDefinition,
   GameSpec,
+  Vector3,
 } from "@/lib/types/gamespec";
 import { modelStorage } from "@/lib/utils/model-storage";
 import { GameEngine } from "@/lib/runtime/game-engine";
+
+// DropZoneHandler - handles prefab drop inside Canvas
+function DropZoneHandler({
+  dropRequest,
+  onPrefabDrop,
+}: {
+  dropRequest: {
+    prefabId: string;
+    mouseNDC: { x: number; y: number };
+  } | null;
+  onPrefabDrop?: (prefabId: string, position: Vector3) => void;
+}) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    if (!dropRequest || !onPrefabDrop) return;
+
+    const { prefabId, mouseNDC } = dropRequest;
+    console.log("DropZoneHandler processing drop:", prefabId, mouseNDC);
+
+    // Create raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(mouseNDC.x, mouseNDC.y), camera);
+
+    // Ground plane at Y=0
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersection = new THREE.Vector3();
+
+    if (raycaster.ray.intersectPlane(groundPlane, intersection)) {
+      console.log("Intersection found:", intersection);
+      onPrefabDrop(prefabId, {
+        x: intersection.x,
+        y: intersection.y,
+        z: intersection.z,
+      });
+    } else {
+      console.warn("No intersection with ground plane, using origin");
+      // Fallback to origin if no intersection
+      onPrefabDrop(prefabId, { x: 0, y: 0, z: 0 });
+    }
+  }, [dropRequest, camera, onPrefabDrop]);
+
+  return null;
+}
 
 interface Viewport3DProps {
   gameObjects: GameObject[];
@@ -35,6 +80,7 @@ interface Viewport3DProps {
     transform: GameObject["transform"],
   ) => void;
   isPlayMode?: boolean;
+  onPrefabDrop?: (prefabId: string, position: Vector3) => void;
 }
 
 export function Viewport3D({
@@ -44,13 +90,69 @@ export function Viewport3D({
   onObjectSelect,
   onObjectTransformChange,
   isPlayMode = false,
+  onPrefabDrop,
 }: Viewport3DProps) {
   const [transformMode, setTransformMode] = useState<
     "translate" | "rotate" | "scale"
   >("translate");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [dropRequest, setDropRequest] = useState<{
+    prefabId: string;
+    mouseNDC: { x: number; y: number };
+  } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+
+  // Handle drop events
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (isPlayMode) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!isDragOver) {
+        console.log("Drag over viewport");
+        setIsDragOver(true);
+      }
+    },
+    [isPlayMode, isDragOver],
+  );
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      if (isPlayMode) return;
+      setIsDragOver(false);
+    },
+    [isPlayMode],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      console.log("Drop event fired");
+      if (isPlayMode) {
+        console.log("Ignoring drop - play mode active");
+        return;
+      }
+      e.preventDefault();
+      setIsDragOver(false);
+
+      const prefabId = e.dataTransfer.getData("application/prefab-id");
+      console.log("Dropped prefab ID:", prefabId);
+      if (!prefabId) {
+        console.warn("No prefab ID in drop data");
+        return;
+      }
+
+      // Convert mouse position to NDC
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      console.log("Drop NDC coordinates:", { x, y });
+      setDropRequest({ prefabId, mouseNDC: { x, y } });
+    },
+    [isPlayMode],
+  );
 
   // Keyboard shortcuts for transform modes (only in edit mode)
   useEffect(() => {
@@ -166,41 +268,58 @@ export function Viewport3D({
 
       {/* Edit Mode Canvas (React Three Fiber) */}
       {!isPlayMode && (
-        <Canvas camera={{ position: [5, 5, 5], fov: 75 }}>
-          {/* Lighting */}
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={0.8} />
-
-          {/* Grid */}
-          <Grid
-            args={[20, 20]}
-            cellSize={1}
-            cellThickness={0.5}
-            cellColor="#6b7280"
-            sectionSize={5}
-            sectionThickness={1}
-            sectionColor="#9ca3af"
-            fadeDistance={30}
-            fadeStrength={1}
-            followCamera={false}
-            infiniteGrid={true}
-          />
-
-          {/* Game Objects */}
-          {gameObjects.map((obj) => (
-            <GameObjectRenderer
-              key={obj.id}
-              gameObject={obj}
-              isSelected={obj.id === selectedObjectId}
-              transformMode={transformMode}
-              onSelect={onObjectSelect}
-              onTransformChange={onObjectTransformChange}
+        <div
+          className="w-full h-full"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          style={{
+            border: isDragOver ? "2px solid #3b82f6" : "2px solid transparent",
+            transition: "border-color 0.2s",
+          }}
+        >
+          <Canvas camera={{ position: [5, 5, 5], fov: 75 }}>
+            {/* Drop Zone Handler */}
+            <DropZoneHandler
+              dropRequest={dropRequest}
+              onPrefabDrop={onPrefabDrop}
             />
-          ))}
 
-          {/* Camera Controls */}
-          <OrbitControls makeDefault />
-        </Canvas>
+            {/* Lighting */}
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[10, 10, 5]} intensity={0.8} />
+
+            {/* Grid */}
+            <Grid
+              args={[20, 20]}
+              cellSize={1}
+              cellThickness={0.5}
+              cellColor="#6b7280"
+              sectionSize={5}
+              sectionThickness={1}
+              sectionColor="#9ca3af"
+              fadeDistance={30}
+              fadeStrength={1}
+              followCamera={false}
+              infiniteGrid={true}
+            />
+
+            {/* Game Objects */}
+            {gameObjects.map((obj) => (
+              <GameObjectRenderer
+                key={obj.id}
+                gameObject={obj}
+                isSelected={obj.id === selectedObjectId}
+                transformMode={transformMode}
+                onSelect={onObjectSelect}
+                onTransformChange={onObjectTransformChange}
+              />
+            ))}
+
+            {/* Camera Controls */}
+            <OrbitControls makeDefault />
+          </Canvas>
+        </div>
       )}
 
       {/* Play Mode Canvas (Raw Three.js) */}

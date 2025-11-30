@@ -49,7 +49,9 @@ export function PrefabLibrary({
             prefab={prefab}
             onInstantiate={() => onInstantiatePrefab(prefab.id)}
             onDelete={() => onDeletePrefab(prefab.id)}
-            onUpdate={onUpdatePrefab ? () => onUpdatePrefab(prefab.id) : undefined}
+            onUpdate={
+              onUpdatePrefab ? () => onUpdatePrefab(prefab.id) : undefined
+            }
           />
         ))}
       </div>
@@ -70,8 +72,18 @@ function PrefabCard({
   onDelete,
   onUpdate,
 }: PrefabCardProps) {
+  const handleDragStart = (e: React.DragEvent) => {
+    console.log("Drag started for prefab:", prefab.id, prefab.name);
+    e.dataTransfer.setData("application/prefab-id", prefab.id);
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
   return (
-    <div className="bg-gray-700 rounded-lg overflow-hidden group hover:bg-gray-650 transition-colors">
+    <div
+      className="bg-gray-700 rounded-lg overflow-hidden group hover:bg-gray-650 transition-colors cursor-grab active:cursor-grabbing"
+      draggable={true}
+      onDragStart={handleDragStart}
+    >
       {/* Thumbnail */}
       <div className="aspect-square bg-gray-800 flex items-center justify-center relative">
         {prefab.thumbnail ? (
@@ -142,7 +154,10 @@ function PrefabCard({
           {prefab.name}
         </h4>
         {prefab.description && (
-          <p className="text-xs text-gray-400 truncate" title={prefab.description}>
+          <p
+            className="text-xs text-gray-400 truncate"
+            title={prefab.description}
+          >
             {prefab.description}
           </p>
         )}
