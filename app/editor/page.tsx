@@ -7,11 +7,17 @@ import { Inspector } from "@/components/editor/Inspector";
 import { Viewport3D } from "@/components/editor/Viewport3D";
 import { ScriptEditor } from "@/components/editor/ScriptEditor";
 import { MenuBar } from "@/components/editor/MenuBar";
+import { PrefabLibrary } from "@/components/editor/PrefabLibrary";
 import type {
   GameObject,
   ScriptDefinition,
   GameSpec,
+  PrefabDefinition,
 } from "@/lib/types/gamespec";
+import {
+  createPrefabFromGameObject,
+  instantiatePrefab,
+} from "@/lib/utils/prefab";
 import {
   saveEditorState,
   saveProject,
@@ -41,6 +47,7 @@ export default function EditorPage() {
   const [gameObjects, setGameObjects] =
     useState<GameObject[]>(defaultGameObjects);
   const [scripts, setScripts] = useState<ScriptDefinition[]>(defaultScripts);
+  const [prefabs, setPrefabs] = useState<PrefabDefinition[]>([]);
 
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
@@ -53,6 +60,12 @@ export default function EditorPage() {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [isPlayMode, setIsPlayMode] = useState(false);
+  const [leftPanelTab, setLeftPanelTab] = useState<"hierarchy" | "prefabs">(
+    "hierarchy",
+  );
+  const [showCreatePrefabDialog, setShowCreatePrefabDialog] = useState(false);
+  const [prefabName, setPrefabName] = useState("");
+  const [prefabDescription, setPrefabDescription] = useState("");
 
   // Load project from URL hash on mount
   useEffect(() => {
@@ -64,6 +77,7 @@ export default function EditorPage() {
           project.gameSpec.worlds[0]?.objects || defaultGameObjects,
         );
         setScripts(project.gameSpec.scripts || defaultScripts);
+        setPrefabs(project.gameSpec.prefabs || []);
         setCurrentProjectId(project.id);
         setCurrentProjectName(project.name);
       }
@@ -88,6 +102,29 @@ export default function EditorPage() {
         selectedScriptId,
       };
       saveEditorState(editorState);
+
+      // Also auto-save prefabs to the current project
+      if (currentProjectId && currentProjectName) {
+        const existingProject = loadProject(currentProjectId);
+        if (existingProject) {
+          const updatedProject = {
+            ...existingProject,
+            updatedAt: new Date().toISOString(),
+            gameSpec: {
+              ...existingProject.gameSpec,
+              worlds: [
+                {
+                  ...existingProject.gameSpec.worlds[0],
+                  objects: gameObjects,
+                },
+              ],
+              scripts: scripts,
+              prefabs: prefabs,
+            },
+          };
+          saveProject(updatedProject);
+        }
+      }
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
@@ -215,6 +252,55 @@ export default function EditorPage() {
     }
   }, []);
 
+  // Prefab handlers
+  const handleCreatePrefab = useCallback(() => {
+    if (!selectedObjectId) return;
+
+    const selectedObj = gameObjects.find((obj) => obj.id === selectedObjectId);
+    if (!selectedObj) return;
+
+    setShowCreatePrefabDialog(true);
+    setPrefabName(selectedObj.name);
+  }, [selectedObjectId, gameObjects]);
+
+  const handleConfirmCreatePrefab = useCallback(() => {
+    if (!selectedObjectId || !prefabName.trim()) return;
+
+    const selectedObj = gameObjects.find((obj) => obj.id === selectedObjectId);
+    if (!selectedObj) return;
+
+    const newPrefab = createPrefabFromGameObject(
+      selectedObj,
+      prefabName.trim(),
+      prefabDescription.trim() || undefined,
+    );
+
+    setPrefabs((prev) => [...prev, newPrefab]);
+    setShowCreatePrefabDialog(false);
+    setPrefabName("");
+    setPrefabDescription("");
+    setLeftPanelTab("prefabs"); // Switch to prefabs tab
+  }, [selectedObjectId, gameObjects, prefabName, prefabDescription]);
+
+  const handleInstantiatePrefab = useCallback(
+    (prefabId: string) => {
+      const prefab = prefabs.find((p) => p.id === prefabId);
+      if (!prefab) return;
+
+      const instance = instantiatePrefab(prefab);
+      setGameObjects((prev) => [...prev, instance]);
+      setSelectedObjectId(instance.id);
+      setLeftPanelTab("hierarchy"); // Switch back to hierarchy
+    },
+    [prefabs],
+  );
+
+  const handleDeletePrefab = useCallback((prefabId: string) => {
+    if (confirm("Are you sure you want to delete this prefab?")) {
+      setPrefabs((prev) => prev.filter((p) => p.id !== prefabId));
+    }
+  }, []);
+
   const handleSaveProject = () => {
     if (projectName.trim()) {
       const project = createProject(projectName.trim(), gameObjects, scripts);
@@ -294,6 +380,7 @@ export default function EditorPage() {
       if (world) {
         setGameObjects(world.objects);
         setScripts(project.gameSpec.scripts || []);
+        setPrefabs(project.gameSpec.prefabs || []);
         setSelectedObjectId(null);
         setSelectedScriptId(null);
         setCurrentProjectId(project.id);
@@ -400,6 +487,7 @@ export default function EditorPage() {
   const handleSelectTemplate = (template: GameTemplate) => {
     setGameObjects(template.gameObjects);
     setScripts(template.scripts);
+    setPrefabs([]);
     setSelectedObjectId(null);
     setSelectedScriptId(null);
     setCurrentProjectId(null);
@@ -496,19 +584,50 @@ export default function EditorPage() {
 
       {/* Main Editor Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel - Scene Hierarchy */}
+        {/* Left Panel - Scene Hierarchy & Prefabs */}
         <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-lg font-semibold">Hierarchy</h2>
+          {/* Tab Navigation */}
+          <div className="flex border-b border-gray-700">
+            <button
+              onClick={() => setLeftPanelTab("hierarchy")}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                leftPanelTab === "hierarchy"
+                  ? "bg-gray-700 text-white border-b-2 border-blue-500"
+                  : "text-gray-400 hover:text-white hover:bg-gray-750"
+              }`}
+            >
+              Hierarchy
+            </button>
+            <button
+              onClick={() => setLeftPanelTab("prefabs")}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                leftPanelTab === "prefabs"
+                  ? "bg-gray-700 text-white border-b-2 border-blue-500"
+                  : "text-gray-400 hover:text-white hover:bg-gray-750"
+              }`}
+            >
+              Prefabs ({prefabs.length})
+            </button>
           </div>
-          <SceneHierarchy
-            gameObjects={gameObjects}
-            selectedObjectId={selectedObjectId}
-            onObjectSelect={handleObjectSelect}
-            onAddObject={handleAddObject}
-            onDuplicateObject={handleDuplicateObject}
-            onDeleteObject={handleDeleteObject}
-          />
+
+          {/* Tab Content */}
+          {leftPanelTab === "hierarchy" ? (
+            <SceneHierarchy
+              gameObjects={gameObjects}
+              selectedObjectId={selectedObjectId}
+              onObjectSelect={handleObjectSelect}
+              onAddObject={handleAddObject}
+              onDuplicateObject={handleDuplicateObject}
+              onDeleteObject={handleDeleteObject}
+              onCreatePrefab={handleCreatePrefab}
+            />
+          ) : (
+            <PrefabLibrary
+              prefabs={prefabs}
+              onInstantiatePrefab={handleInstantiatePrefab}
+              onDeletePrefab={handleDeletePrefab}
+            />
+          )}
         </div>
 
         {/* Center - 3D Viewport */}
@@ -668,6 +787,61 @@ export default function EditorPage() {
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
               >
                 キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Prefab Dialog */}
+      {showCreatePrefabDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-96 border border-gray-700">
+            <h3 className="text-xl font-semibold mb-4">Create Prefab</h3>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Prefab Name
+                </label>
+                <input
+                  type="text"
+                  value={prefabName}
+                  onChange={(e) => setPrefabName(e.target.value)}
+                  placeholder="Enter prefab name"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={prefabDescription}
+                  onChange={(e) => setPrefabDescription(e.target.value)}
+                  placeholder="Enter description"
+                  rows={3}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500 resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowCreatePrefabDialog(false);
+                  setPrefabName("");
+                  setPrefabDescription("");
+                }}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmCreatePrefab}
+                disabled={!prefabName.trim()}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-white transition-colors"
+              >
+                Create
               </button>
             </div>
           </div>
