@@ -766,6 +766,26 @@ export default function EditorPage() {
                         <circle cx="12" cy="12" r="3" fill="white" />
                       </svg>
                     )}
+                    {template.id === "side-scroll-action" && (
+                      <svg
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="text-blue-500"
+                      >
+                        {/* Ground */}
+                        <rect x="2" y="19" width="20" height="2" />
+                        {/* Platform 1 */}
+                        <rect x="4" y="15" width="6" height="1.5" />
+                        {/* Platform 2 */}
+                        <rect x="14" y="11" width="6" height="1.5" />
+                        {/* Player (jumping character) */}
+                        <rect x="8" y="8" width="2.5" height="3" rx="0.5" />
+                        {/* Arrow showing direction */}
+                        <path d="M18 7 L21 7 L19.5 5.5 M21 7 L19.5 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    )}
                     {template.id === "empty" && (
                       <svg
                         width="48"

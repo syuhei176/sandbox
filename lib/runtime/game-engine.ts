@@ -30,6 +30,7 @@ export class GameEngine {
   private mainCameraObjectId: string | null = null;
   private colliders: Map<string, ColliderData> = new Map();
   private previousCollisions: Set<string> = new Set();
+  private shouldUsePointerLock: boolean = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -50,6 +51,31 @@ export class GameEngine {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
+
+    // Initialize keyboard state with common keys
+    this.initializeKeyboardState();
+  }
+
+  private initializeKeyboardState(): void {
+    // Initialize important keys to false so they exist in the input table from the start
+    const keys = [
+      "w",
+      "a",
+      "s",
+      "d",
+      "arrowup",
+      "arrowdown",
+      "arrowleft",
+      "arrowright",
+      " ",
+      "shift",
+      "control",
+      "escape",
+      "enter",
+    ];
+    keys.forEach((key) => {
+      this.keyboardState[key] = false;
+    });
   }
 
   async loadGame(gameSpec: GameSpec): Promise<void> {
@@ -655,6 +681,9 @@ export class GameEngine {
       // Don't add to object3D - we'll control position/rotation directly in update()
       this.camera = camera;
       this.mainCameraObjectId = gameObjectId;
+
+      // Check if pointer lock should be used (for FPS games)
+      this.shouldUsePointerLock = props.usePointerLock === true;
     } else {
       // Non-main cameras are added to object3D as children
       object3D.add(camera);
@@ -668,6 +697,10 @@ export class GameEngine {
   }
 
   private setupInputListeners(): void {
+    // Make canvas focusable and focus it to receive keyboard events
+    this.canvas.tabIndex = 0;
+    this.canvas.focus();
+
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
     this.canvas.addEventListener("click", this.handleCanvasClick);
@@ -688,8 +721,8 @@ export class GameEngine {
 
   private handleCanvasClick = (): void => {
     this.mouseClick = true;
-    // Request pointer lock on click if not already locked
-    if (!this.isPointerLocked) {
+    // Request pointer lock on click only if enabled (for FPS games)
+    if (this.shouldUsePointerLock && !this.isPointerLocked) {
       this.canvas.requestPointerLock();
     }
   };

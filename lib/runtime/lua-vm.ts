@@ -143,10 +143,11 @@ end
   setInputState(keyboardState: { [key: string]: boolean }): void {
     if (!this.L) return;
 
-    // Create a Lua table for input
+    // Always create a new Lua table for input (even if empty)
     this.lua.lua_newtable(this.L);
 
-    // Set each key state
+    // Set each key state (including false values)
+    // This ensures input table always exists and keys are explicitly false when not pressed
     for (const [key, isPressed] of Object.entries(keyboardState)) {
       this.lua.lua_pushstring(this.L, this.to_luastring(key));
       this.lua.lua_pushboolean(this.L, isPressed);
