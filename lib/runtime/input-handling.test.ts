@@ -56,7 +56,9 @@ describe("Input Handling", () => {
 
       // Access private keyboardState through engine's internal state
       // We'll verify this by checking that input is passed to Lua VM correctly
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       // Common keys should be initialized to false
       expect(keyboardState["w"]).toBe(false);
@@ -75,7 +77,9 @@ describe("Input Handling", () => {
     });
 
     it("should not have undefined keys for common inputs", () => {
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       // Keys should exist with explicit false, not undefined
       expect(keyboardState["w"]).not.toBeUndefined();
@@ -247,7 +251,9 @@ describe("Input Handling", () => {
     it("should set keyboard state to true on keydown", () => {
       engine.start();
 
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       // Simulate key down
       const keydownEvent = new KeyboardEvent("keydown", { key: "w" });
@@ -259,7 +265,9 @@ describe("Input Handling", () => {
     it("should set keyboard state to false on keyup", () => {
       engine.start();
 
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       // Simulate key down then up
       const keydownEvent = new KeyboardEvent("keydown", { key: "a" });
@@ -276,7 +284,9 @@ describe("Input Handling", () => {
     it("should normalize keys to lowercase", () => {
       engine.start();
 
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       // Simulate uppercase key (e.g., shift+W)
       const keydownEvent = new KeyboardEvent("keydown", { key: "W" });
@@ -290,7 +300,9 @@ describe("Input Handling", () => {
     it("should handle arrow keys correctly", () => {
       engine.start();
 
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       const arrowLeftEvent = new KeyboardEvent("keydown", {
         key: "ArrowLeft",
@@ -303,7 +315,9 @@ describe("Input Handling", () => {
     it("should handle space key correctly", () => {
       engine.start();
 
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       const spaceEvent = new KeyboardEvent("keydown", { key: " " });
       window.dispatchEvent(spaceEvent);
@@ -314,7 +328,9 @@ describe("Input Handling", () => {
     it("should handle multiple simultaneous key presses", () => {
       engine.start();
 
-      const keyboardState = (engine as any).keyboardState;
+      const keyboardState = (
+        engine as unknown as { keyboardState: { [key: string]: boolean } }
+      ).keyboardState;
 
       // Press multiple keys
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
