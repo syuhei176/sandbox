@@ -106,6 +106,23 @@ export type GeometryType =
 
 export type CollisionShape = "box" | "sphere" | "auto";
 
+// Camera component properties:
+// - fov: number - Field of view in degrees
+// - aspect: number - Aspect ratio (width/height)
+// - near: number - Near clipping plane
+// - far: number - Far clipping plane
+// - isMainCamera: boolean - If true, use this camera as the main rendering camera
+// - usePointerLock: boolean - If true, request pointer lock on canvas click (for FPS games)
+
+export interface CameraProperties {
+  fov?: number;
+  aspect?: number;
+  near?: number;
+  far?: number;
+  isMainCamera?: boolean;
+  usePointerLock?: boolean;
+}
+
 export interface ScriptDefinition {
   id: string;
   name: string;

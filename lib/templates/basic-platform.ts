@@ -335,6 +335,7 @@ export const basicPlatformTemplate: GameTemplate = {
             near: 0.1,
             far: 1000,
             isMainCamera: true,
+            usePointerLock: false, // 3Dプラットフォーマーだがポインターロック不要
           },
         },
       ],
@@ -401,25 +402,26 @@ end
 
 function on_update(dt)
   if not gameobject then return end
+  if not input then return end
 
   local pos = gameobject.transform.position
 
   -- Movement with arrow keys
-  if input and input["arrowup"] then
+  if input["arrowup"] then
     gameobject.transform.position.z = pos.z - speed * dt
   end
-  if input and input["arrowdown"] then
+  if input["arrowdown"] then
     gameobject.transform.position.z = pos.z + speed * dt
   end
-  if input and input["arrowleft"] then
+  if input["arrowleft"] then
     gameobject.transform.position.x = pos.x - speed * dt
   end
-  if input and input["arrowright"] then
+  if input["arrowright"] then
     gameobject.transform.position.x = pos.x + speed * dt
   end
 
   -- Jump with Space key
-  if input and input[" "] and is_grounded then
+  if input[" "] and is_grounded then
     velocity_y = jump_force
     is_grounded = false
   end

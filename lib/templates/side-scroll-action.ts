@@ -315,6 +315,8 @@ export const sideScrollActionTemplate: GameTemplate = {
             aspect: 16 / 9,
             near: 0.1,
             far: 1000,
+            isMainCamera: true,
+            usePointerLock: false, // 2D横スクロールなのでポインターロック不要
           },
         },
       ],
@@ -382,6 +384,11 @@ function on_start()
 end
 
 function on_update(dt)
+    -- 入力テーブルの存在確認
+    if not input then
+        return
+    end
+
     local pos = gameobject.transform.position
 
     -- 左右移動（矢印キーまたはAD）

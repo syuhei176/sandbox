@@ -1,128 +1,198 @@
-# TODO: エディターを実用的にするための改善項目
+# AI Game Platform - 品質改善 TODO
 
-## 必須機能（High Priority）
+このドキュメントは、プロジェクトの品質向上のための改善タスクをトラッキングします。
 
-### 1. データの永続化
-- [x] エディターの状態をlocalStorageに自動保存
-- [x] 保存/読み込みボタンの追加
-- [x] プロジェクトのエクスポート/インポート機能（JSON形式）
-- [x] 複数プロジェクトの管理（プロジェクト一覧）
+## 🎯 優先度の高いタスク
 
-### 2. GameObjectの編集機能
-- [x] GameObjectの追加ボタン
-- [x] GameObjectの削除機能
-- [x] GameObjectの複製機能
-- [x] 親子関係の編集（ドラッグ&ドロップでの階層変更）
-- [x] GameObjectの名前変更機能
+### フェーズ1: キーボード入力バグ修正（最優先）
 
-### 3. コンポーネントシステムの強化
-- [x] コンポーネントの追加UI（ドロップダウンから選択）
-- [x] コンポーネントの削除機能
-- [x] 各コンポーネントタイプの専用Inspector UI
-  - [x] Mesh: geometry type selector, material properties
-  - [x] Light: light type selector, color picker
-  - [x] Camera: FOV slider, near/far planes
+- [ ] **型定義の更新** (`lib/types/gamespec.ts`)
+  - [ ] `CameraProperties`に`usePointerLock?: boolean`を追加
 
-### 4. Transformの編集改善
-- [x] 数値入力フィールドの実装（現在未実装の場合）
-- [x] 3Dビューポートでのギズモ操作（移動/回転/スケール）
-- [x] キーボードショートカット（Delete, Ctrl+C/V など）
+- [ ] **ゲームエンジンの修正** (`lib/runtime/game-engine.ts`)
+  - [ ] キャンバスフォーカス管理の追加（`tabIndex`, `focus()`）
+  - [ ] キーボード状態の初期化メソッド追加
+  - [ ] ポインターロックの条件付き有効化
+  - [ ] メインカメラの`usePointerLock`プロパティチェック
 
-### 5. スクリプト管理
-- [x] 新規スクリプトの作成機能
-- [x] スクリプトの削除機能
-- [x] スクリプトのGameObjectへのアタッチ/デタッチ
-- [x] スクリプトテンプレート機能（on_start/on_update付き）
-- [ ] Luaシンタックスハイライトの改善
+- [ ] **Lua VM の修正** (`lib/runtime/lua-vm.ts`)
+  - [ ] `setInputState`で常に入力テーブルを作成（空でも）
+  - [ ] すべてのキー状態を明示的に設定（false含む）
 
-## 重要機能（Medium Priority）
+- [ ] **テンプレートスクリプトの修正**
+  - [ ] side-scroll-action: 入力検証追加、usePointerLock: false設定
+  - [ ] fps: usePointerLock: true設定
+  - [ ] basic-platform: 入力検証追加、usePointerLock設定
 
-### 6. 3Dビューポートの改善
-- [x] GameObjectの選択（クリックで選択）
-- [ ] 複数選択機能
-- [ ] フォーカス機能（選択オブジェクトにカメラをフォーカス）
-- [ ] グリッドのON/OFF切り替え
-- [ ] ワイヤーフレーム表示モード
+- [ ] **入力処理のテスト追加** (`lib/runtime/input-handling.test.ts`)
+  - [ ] キャンバスフォーカス時のキーボードイベント受信
+  - [ ] ポインターロックフラグの動作検証
+  - [ ] 入力テーブルの存在保証
+  - [ ] 複数キー同時押しの処理
 
-### 7. アセット管理
-- [ ] テクスチャのアップロード機能
-- [ ] マテリアルプリセット
-- [ ] カラーピッカーの実装
+---
 
-### 8. World/Environment設定
-- [ ] Environment設定パネル
-- [ ] Skybox設定
-- [ ] Ambient/Directional Light設定UI
+## 🧪 フェーズ2: テストカバレッジ拡充
 
-### 9. プレイモードの改善
-- [ ] ランタイムからエディターに戻る際に状態を保持
-- [ ] プレイモード中の変更を保存する機能
-- [ ] プレイモードのホットリロード
+### Prefabシステムのテスト (`lib/utils/prefab.test.ts`)
 
-### 10. UI/UX改善
-- [ ] Undo/Redo機能
-- [ ] ツールバーの拡充（保存、読み込み、設定など）
-- [ ] ショートカットキーのサポート
-- [ ] ドラッグ&ドロップでのファイル読み込み
-- [ ] パネルのリサイズ機能
+- [ ] **テストユーティリティ追加** (`test/test-utils.ts`)
+  - [ ] `createTestPrefab()`ファクトリー関数
 
-## あると便利な機能（Low Priority）
+- [ ] **createPrefabFromGameObject() テスト**
+  - [ ] 単一GameObjectからPrefab作成
+  - [ ] 子オブジェクト含むGameObjectからPrefab作成
+  - [ ] スクリプト付きGameObjectからPrefab作成
+  - [ ] カスタムモデル持つGameObjectからPrefab作成
+  - [ ] name/description設定の検証
 
-### 11. 高度な編集機能
-- [ ] プレハブシステム
-- [ ] コンポーネントのコピー&ペースト
-- [ ] GameObjectの検索機能
-- [ ] フィルター機能（タイプ別、名前別）
+- [ ] **instantiatePrefab() テスト**
+  - [ ] Prefabから新しいインスタンス作成
+  - [ ] IDが一意に再生成される
+  - [ ] transformのコピー
+  - [ ] componentsの深いコピー
+  - [ ] 子オブジェクトのID再生成
+  - [ ] script_idの保持
 
-### 12. デバッグ支援
-- [ ] コンソールパネル（Luaのprint出力を表示）
-- [ ] エラー表示の改善
-- [ ] パフォーマンスモニター（FPS表示）
+- [ ] **updatePrefabFromGameObject() テスト**
+  - [ ] 既存Prefabの更新
+  - [ ] name/descriptionの変更
+  - [ ] GameObjectの変更反映
 
-### 13. コラボレーション機能
-- [ ] クラウド保存（Firebase等）
-- [ ] プロジェクト共有URL
-- [ ] バージョン管理
+### モデルストレージのテスト (`lib/utils/model-storage.test.ts`)
 
-### 14. エクスポート機能
-- [ ] スタンドアロンHTML出力
-- [ ] glTF/GLBエクスポート
-- [ ] スクリーンショット機能
+- [ ] **依存関係追加**
+  - [ ] `fake-indexeddb@^6.0.0`をdevDependenciesに追加
 
-### 15. テンプレート・サンプル
-- [ ] プロジェクトテンプレート（FPS, Platformer, etc.）
-- [ ] サンプルゲームギャラリー
-- [ ] チュートリアルモード
+- [ ] **saveModel() テスト**
+  - [ ] 新規モデルの保存（Blob + メタデータ）
+  - [ ] サムネイル付きモデルの保存
+  - [ ] 既存モデルの上書き
 
-## 技術的改善
+- [ ] **getModel() テスト**
+  - [ ] 保存したモデルの取得
+  - [ ] 存在しないモデルでエラー
 
-### 16. パフォーマンス
-- [ ] 大量のGameObjectを扱えるように最適化
-- [ ] 3Dビューポートのレンダリング最適化
-- [ ] メモリ管理の改善
+- [ ] **getAllModels() テスト**
+  - [ ] 全モデルのメタデータ取得
+  - [ ] 空のデータベース
 
-### 17. コード品質
-- [ ] Inspectorコンポーネントのリファクタリング（現在全てのpropertyを表示）
-- [ ] 型安全性の向上（unknown型の削減）
-- [ ] エラーハンドリングの改善
-- [ ] ユニットテストの追加
+- [ ] **deleteModel() テスト**
+  - [ ] モデルの削除
+  - [ ] 存在しないモデルの削除
 
-### 18. アクセシビリティ
-- [ ] キーボードナビゲーション
-- [ ] スクリーンリーダー対応
-- [ ] ハイコントラストモード
+- [ ] **updateModelMetadata() テスト**
+  - [ ] name/tagsの更新
 
-## 現在の主な制限事項
+### ゲームテンプレートのテスト (`lib/templates/templates.test.ts`)
 
-- GameObjectの追加/削除ができない（サンプルデータのみ）
-- コンポーネントの追加/削除ができない
-- Inspectorが汎用的すぎて使いにくい（プロパティの型が不明確）
-- エディターの状態が保存されない（リロードで消える）
-- 3Dビューポートでの直接操作ができない
-- スクリプトの追加/削除ができない
+- [ ] **Empty テンプレート検証**
+  - [ ] gameObjectsが有効
+  - [ ] scriptsが有効
+  - [ ] GameSpecValidatorで検証成功
+  - [ ] 必須コンポーネント存在
 
-## 優先順位の推奨
+- [ ] **FPS テンプレート検証**
+  - [ ] FPSPlayer + FPSCamera存在
+  - [ ] マウスルックスクリプト存在
+  - [ ] script_id参照整合性
+  - [ ] usePointerLock設定確認
 
-1. **まず実装すべき**: データ永続化、GameObject追加/削除、Inspector改善
-2. **次に実装すべき**: コンポーネント管理、スクリプト管理、3Dギズモ
-3. **その後**: アセット管理、UI/UX改善、デバッグ機能
+- [ ] **Basic Platform テンプレート検証**
+  - [ ] Player + ジャンプ機能
+  - [ ] プラットフォーム衝突設定
+  - [ ] カメラ設定
+
+- [ ] **Side-Scroll Action テンプレート検証**
+  - [ ] Player + 横スクロールカメラ
+  - [ ] コイン + 敵の配置
+  - [ ] usePointerLock無効化確認
+
+### 既存テストの補強
+
+- [ ] **game-engine.test.ts 追加**
+  - [ ] コリジョン検出（Box-Box, Sphere-Sphere, Box-Sphere）
+  - [ ] トリガー vs ソリッドコリジョン
+  - [ ] transform同期（Three.js ↔ GameObject ↔ Lua VM）
+  - [ ] カスタムモデル読み込み失敗時の処理
+  - [ ] リソース破棄（destroy()）の完全性
+
+- [ ] **lua-vm.test.ts 追加**
+  - [ ] `find_gameobject()`関数の動作
+  - [ ] `on_collision()`コールバック
+  - [ ] `on_trigger_enter()`/`on_trigger_exit()`コールバック
+  - [ ] 入力状態の受け渡し（keyboard, mouse）
+
+---
+
+## 📚 フェーズ3: Claude Skill開発
+
+### スキルファイル作成
+
+- [ ] **`.skills/game-generator.md` 作成**
+  - [ ] 使用方法セクション
+  - [ ] GameSpec完全仕様
+  - [ ] Lua API リファレンス
+  - [ ] コンポーネント仕様（Mesh, Light, Camera）
+  - [ ] ベストプラクティス
+  - [ ] テンプレート参考例（FPS, side-scroll, platform）
+  - [ ] よくある問題と解決策
+
+### ドキュメント整備
+
+- [ ] **`docs/lua-api.md` 作成**
+  - [ ] グローバル変数詳細
+  - [ ] ライフサイクル関数詳細
+  - [ ] ユーティリティ関数詳細
+  - [ ] サンプルコード集
+
+- [ ] **`docs/skill-usage.md` 作成**
+  - [ ] Claude Codeでのスキル使用方法
+  - [ ] 効果的なプロンプトの書き方
+  - [ ] 生成結果の検証方法
+
+---
+
+## ✅ 検証タスク
+
+- [ ] **入力バグ修正の検証**
+  - [ ] 横スクロールアクションテンプレートで動作確認
+  - [ ] 矢印キー/WASD/スペースキーすべて動作
+  - [ ] FPSテンプレートでポインターロック動作
+
+- [ ] **テストの検証**
+  - [ ] `npm run test` ですべてのテスト合格
+  - [ ] `npm run test:coverage` でカバレッジ確認
+  - [ ] 目標: 46テスト → 100テスト以上
+
+- [ ] **Claude Skillの検証**
+  - [ ] スキルファイルが認識される
+  - [ ] 自然言語からGameSpec生成
+  - [ ] 生成されたLuaスクリプトが動作
+
+---
+
+## 📊 進捗状況
+
+- **入力バグ修正:** 0% (0/4)
+- **テストカバレッジ:** 0% (0/6)
+- **Claude Skill:** 0% (0/3)
+- **全体進捗:** 0% (0/13)
+
+---
+
+## 🎉 期待される成果
+
+1. **テストカバレッジ:** 46テスト → 100テスト以上
+2. **入力システム:** すべてのテンプレートでキーボード入力が確実に動作
+3. **開発体験:** Claude SkillによりGameSpec生成の精度とスピードが向上
+4. **ドキュメント:** Lua API完全リファレンスの完成
+5. **保守性:** コアロジックの変更時に回帰テストで検出可能
+
+---
+
+## 📝 備考
+
+- プランファイル: `/Users/syuhei/.claude/plans/elegant-dazzling-stallman.md`
+- 実装順序: 入力バグ修正 → テストカバレッジ → Claude Skill
+- 最優先: キーボード入力の問題解決（ユーザーが直面している課題）

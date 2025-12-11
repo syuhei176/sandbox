@@ -332,6 +332,7 @@ export const fpsTemplate: GameTemplate = {
             near: 0.1,
             far: 1000,
             isMainCamera: true,
+            usePointerLock: true, // FPSゲームなのでポインターロック必要
           },
         },
       ],
