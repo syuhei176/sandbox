@@ -28,6 +28,18 @@ export class LuaVM {
   private gameEngine: any = null;
   private currentGameObjectId: string = "";
 
+  // Timeout management
+  private executionStartTime: number = 0;
+  private isExecuting: boolean = false;
+  private readonly MAX_EXECUTION_TIME_MS = 16; // ~1 frame at 60fps
+  private readonly INSTRUCTION_CHECK_INTERVAL = 1000; // Check every N instructions
+  private hasTimedOut: boolean = false;
+
+  // Error tracking
+  private lastError: string | null = null;
+  private errorCount: number = 0;
+  private readonly MAX_ERRORS_BEFORE_DISABLE = 10;
+
   constructor() {
     if (typeof window === "undefined") {
       throw new Error("LuaVM can only be used in browser environment");
@@ -51,7 +63,71 @@ export class LuaVM {
 
     // Create new Lua state
     this.L = this.lauxlib.luaL_newstate();
-    this.lualib.luaL_openlibs(this.L);
+
+    // ========================================
+    // SANDBOXED ENVIRONMENT: Only open safe libraries
+    // ========================================
+    // DO NOT use luaL_openlibs() - it opens ALL libraries including dangerous ones (io, os, debug)
+    // Instead, open only safe libraries individually:
+
+    // Base library (print, type, tonumber, tostring, pairs, ipairs, etc.)
+    this.lauxlib.luaL_requiref(
+      this.L,
+      this.to_luastring("_G"),
+      this.lualib.luaopen_base,
+      1,
+    );
+    this.lua.lua_pop(this.L, 1);
+
+    // Math library (math.sin, math.cos, math.random, etc.)
+    this.lauxlib.luaL_requiref(
+      this.L,
+      this.to_luastring("math"),
+      this.lualib.luaopen_math,
+      1,
+    );
+    this.lua.lua_pop(this.L, 1);
+
+    // String library (string.sub, string.format, etc.)
+    this.lauxlib.luaL_requiref(
+      this.L,
+      this.to_luastring("string"),
+      this.lualib.luaopen_string,
+      1,
+    );
+    this.lua.lua_pop(this.L, 1);
+
+    // Table library (table.insert, table.sort, etc.)
+    this.lauxlib.luaL_requiref(
+      this.L,
+      this.to_luastring("table"),
+      this.lualib.luaopen_table,
+      1,
+    );
+    this.lua.lua_pop(this.L, 1);
+
+    // UTF8 library (utf8.char, utf8.len, etc.)
+    this.lauxlib.luaL_requiref(
+      this.L,
+      this.to_luastring("utf8"),
+      this.lualib.luaopen_utf8,
+      1,
+    );
+    this.lua.lua_pop(this.L, 1);
+
+    // ========================================
+    // DISABLED LIBRARIES (for security):
+    // - io: File I/O operations
+    // - os: Operating system operations (execute, exit, etc.)
+    // - debug: Debug library (can access/modify internals)
+    // - package/require: Module loading
+    // ========================================
+
+    // Disable dangerous global functions
+    this.disableDangerousFunctions();
+
+    // Setup execution timeout using debug hooks
+    this.setupTimeoutHook();
 
     // Register find_gameobject function
     // We use a simple Lua function that accesses the all_gameobjects global table
@@ -60,6 +136,55 @@ export class LuaVM {
 
     // Register animation control functions (stubs that will call gameEngine methods)
     this.registerAnimationFunctions();
+  }
+
+  private setupTimeoutHook(): void {
+    // Set a debug hook that checks execution time every N instructions
+    // This prevents infinite loops and excessive computation
+    const hookMask = this.lua.LUA_MASKCOUNT;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hookCallback = (L: any) => {
+      if (!this.isExecuting) return;
+
+      const elapsed = performance.now() - this.executionStartTime;
+      if (elapsed > this.MAX_EXECUTION_TIME_MS) {
+        this.hasTimedOut = true;
+        // Use luaL_error to throw a Lua error
+        this.lauxlib.luaL_error(
+          L,
+          this.to_luastring(
+            `Script execution timeout (>${this.MAX_EXECUTION_TIME_MS}ms). Possible infinite loop detected.`,
+          ),
+        );
+      }
+    };
+
+    this.lua.lua_sethook(
+      this.L,
+      hookCallback,
+      hookMask,
+      this.INSTRUCTION_CHECK_INTERVAL,
+    );
+  }
+
+  private disableDangerousFunctions(): void {
+    // Disable functions that could load/execute arbitrary code
+    const dangerousFunctions = [
+      "dofile",
+      "loadfile",
+      "load",
+      "loadstring",
+      "require",
+    ];
+
+    for (const funcName of dangerousFunctions) {
+      this.lua.lua_pushnil(this.L);
+      this.lua.lua_setglobal(this.L, this.to_luastring(funcName));
+    }
+
+    // Also disable collectgarbage (could be used for timing attacks)
+    this.lua.lua_pushnil(this.L);
+    this.lua.lua_setglobal(this.L, this.to_luastring("collectgarbage"));
   }
 
   private registerStubFindGameObject(): void {
@@ -265,13 +390,55 @@ end
     return null;
   }
 
-  loadScript(scriptCode: string, scriptId: string): boolean {
+  loadScript(scriptCode: string): boolean {
     if (!this.L) {
       console.error("LuaVM not initialized");
       return false;
     }
 
     try {
+      // ========================================
+      // ENVIRONMENT ISOLATION
+      // ========================================
+      // Protect global environment by preventing scripts from creating new globals
+      // This catches typos and prevents accidental global pollution
+      const sandboxSetup = `
+-- Create a protected environment that warns on new global creation
+local _allowed_globals = {}
+local _global_mt = {
+  __index = _G,
+  __newindex = function(t, key, value)
+    if _G[key] == nil then
+      error("Attempt to create global variable '" .. tostring(key) .. "'. Use 'local' keyword for variables.", 2)
+    end
+    rawset(_G, key, value)
+  end
+}
+setmetatable(_allowed_globals, _global_mt)
+_ENV = _allowed_globals
+`;
+
+      // Load and execute sandbox setup
+      const setupResult = this.lauxlib.luaL_loadstring(
+        this.L,
+        this.to_luastring(sandboxSetup),
+      );
+
+      if (setupResult !== this.lua.LUA_OK) {
+        const errorMsg = this.lua.lua_tojsstring(this.L, -1);
+        this.recordError(`Sandbox setup error: ${errorMsg}`);
+        this.lua.lua_pop(this.L, 1);
+        return false;
+      }
+
+      if (this.lua.lua_pcall(this.L, 0, 0, 0) !== this.lua.LUA_OK) {
+        const errorMsg = this.lua.lua_tojsstring(this.L, -1);
+        this.recordError(`Sandbox execution error: ${errorMsg}`);
+        this.lua.lua_pop(this.L, 1);
+        return false;
+      }
+
+      // Load user script
       const result = this.lauxlib.luaL_loadstring(
         this.L,
         this.to_luastring(scriptCode),
@@ -279,7 +446,7 @@ end
 
       if (result !== this.lua.LUA_OK) {
         const errorMsg = this.lua.lua_tojsstring(this.L, -1);
-        console.error(`Lua script load error [${scriptId}]:`, errorMsg);
+        this.recordError(`Script syntax error: ${errorMsg}`);
         this.lua.lua_pop(this.L, 1);
         return false;
       }
@@ -287,14 +454,15 @@ end
       // Execute the script to define functions
       if (this.lua.lua_pcall(this.L, 0, 0, 0) !== this.lua.LUA_OK) {
         const errorMsg = this.lua.lua_tojsstring(this.L, -1);
-        console.error(`Lua script execution error [${scriptId}]:`, errorMsg);
+        this.recordError(`Script execution error: ${errorMsg}`);
         this.lua.lua_pop(this.L, 1);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error(`Failed to load Lua script [${scriptId}]:`, error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.recordError(`Failed to load script: ${errorMsg}`);
       return false;
     }
   }
@@ -534,47 +702,62 @@ end
   callFunction(functionName: string, ...args: any[]): any {
     if (!this.L) return null;
 
-    // Get the function from global scope
-    this.lua.lua_getglobal(this.L, this.to_luastring(functionName));
-
-    if (!this.lua.lua_isfunction(this.L, -1)) {
-      this.lua.lua_pop(this.L, 1);
+    // Skip execution if disabled due to errors
+    const errorInfo = this.getErrorInfo();
+    if (errorInfo.isDisabled) {
       return null;
     }
 
-    // Push arguments
-    for (const arg of args) {
-      if (typeof arg === "number") {
-        this.lua.lua_pushnumber(this.L, arg);
-      } else if (typeof arg === "string") {
-        this.lua.lua_pushstring(this.L, this.to_luastring(arg));
-      } else if (typeof arg === "boolean") {
-        this.lua.lua_pushboolean(this.L, arg);
-      } else {
-        this.lua.lua_pushnil(this.L);
+    // Start timeout tracking
+    this.executionStartTime = performance.now();
+    this.isExecuting = true;
+
+    try {
+      // Get the function from global scope
+      this.lua.lua_getglobal(this.L, this.to_luastring(functionName));
+
+      if (!this.lua.lua_isfunction(this.L, -1)) {
+        this.lua.lua_pop(this.L, 1);
+        return null;
       }
-    }
 
-    // Call function
-    if (this.lua.lua_pcall(this.L, args.length, 1, 0) !== this.lua.LUA_OK) {
-      const errorMsg = this.lua.lua_tojsstring(this.L, -1);
-      console.error(`Lua function call error [${functionName}]:`, errorMsg);
+      // Push arguments
+      for (const arg of args) {
+        if (typeof arg === "number") {
+          this.lua.lua_pushnumber(this.L, arg);
+        } else if (typeof arg === "string") {
+          this.lua.lua_pushstring(this.L, this.to_luastring(arg));
+        } else if (typeof arg === "boolean") {
+          this.lua.lua_pushboolean(this.L, arg);
+        } else {
+          this.lua.lua_pushnil(this.L);
+        }
+      }
+
+      // Call function
+      if (this.lua.lua_pcall(this.L, args.length, 1, 0) !== this.lua.LUA_OK) {
+        const errorMsg = this.lua.lua_tojsstring(this.L, -1);
+        this.recordError(`${functionName}: ${errorMsg}`);
+        this.lua.lua_pop(this.L, 1);
+        return null;
+      }
+
+      // Get return value
+      let result = null;
+      if (this.lua.lua_isnumber(this.L, -1)) {
+        result = this.lua.lua_tonumber(this.L, -1);
+      } else if (this.lua.lua_isstring(this.L, -1)) {
+        result = this.lua.lua_tojsstring(this.L, -1);
+      } else if (this.lua.lua_isboolean(this.L, -1)) {
+        result = this.lua.lua_toboolean(this.L, -1);
+      }
+
       this.lua.lua_pop(this.L, 1);
-      return null;
+      return result;
+    } finally {
+      // Stop timeout tracking
+      this.isExecuting = false;
     }
-
-    // Get return value
-    let result = null;
-    if (this.lua.lua_isnumber(this.L, -1)) {
-      result = this.lua.lua_tonumber(this.L, -1);
-    } else if (this.lua.lua_isstring(this.L, -1)) {
-      result = this.lua.lua_tojsstring(this.L, -1);
-    } else if (this.lua.lua_isboolean(this.L, -1)) {
-      result = this.lua.lua_toboolean(this.L, -1);
-    }
-
-    this.lua.lua_pop(this.L, 1);
-    return result;
   }
 
   /**
@@ -738,6 +921,44 @@ end
     if (this.L) {
       this.lua.lua_close(this.L);
       this.L = null;
+    }
+  }
+
+  /**
+   * Get error information for display to user
+   */
+  getErrorInfo(): {
+    hasError: boolean;
+    lastError: string | null;
+    errorCount: number;
+    isDisabled: boolean;
+  } {
+    return {
+      hasError: this.lastError !== null || this.hasTimedOut,
+      lastError: this.lastError,
+      errorCount: this.errorCount,
+      isDisabled: this.errorCount >= this.MAX_ERRORS_BEFORE_DISABLE || this.hasTimedOut,
+    };
+  }
+
+  /**
+   * Clear error state (e.g., after user fixes script)
+   */
+  clearErrors(): void {
+    this.lastError = null;
+    this.errorCount = 0;
+    this.hasTimedOut = false;
+  }
+
+  private recordError(error: string): void {
+    this.lastError = error;
+    this.errorCount++;
+    console.error(`[LuaVM Error #${this.errorCount}]`, error);
+
+    if (this.errorCount >= this.MAX_ERRORS_BEFORE_DISABLE) {
+      console.error(
+        `Script disabled after ${this.MAX_ERRORS_BEFORE_DISABLE} errors`,
+      );
     }
   }
 }

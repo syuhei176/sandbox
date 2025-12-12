@@ -214,7 +214,7 @@ export class GameEngine {
       luaVM = new LuaVM();
       await luaVM.initialize();
       const scriptCode = this.scripts.get(gameObject.script_id)!;
-      if (luaVM.loadScript(scriptCode, gameObject.script_id)) {
+      if (luaVM.loadScript(scriptCode)) {
         // Set game engine reference and object ID for animation control
         luaVM.setGameEngine(this, gameObject.id);
         luaVM.updateInternalAnimationFunctions();
@@ -844,7 +844,7 @@ export class GameEngine {
 
   private updateAnimations(deltaTime: number): void {
     // Update all animation mixers
-    for (const [id, animData] of this.animations) {
+    for (const animData of this.animations.values()) {
       animData.mixer.update(deltaTime);
 
       // Check for non-looping animations that have finished

@@ -8,6 +8,8 @@ vi.mock("fengari-web", () => ({
     lua_newtable: vi.fn(),
     lua_pushstring: vi.fn(),
     lua_pushnumber: vi.fn(),
+    lua_pushboolean: vi.fn(),
+    lua_pushnil: vi.fn(),
     lua_settable: vi.fn(),
     lua_setglobal: vi.fn(),
     lua_getglobal: vi.fn(() => 1), // LUA_TFUNCTION
@@ -16,19 +18,32 @@ vi.mock("fengari-web", () => ({
     lua_gettop: vi.fn(() => 0),
     lua_isnil: vi.fn(() => false),
     lua_isfunction: vi.fn(() => true),
+    lua_isnumber: vi.fn(() => false),
+    lua_isstring: vi.fn(() => false),
+    lua_isboolean: vi.fn(() => false),
     lua_tonumber: vi.fn(() => 42),
     lua_toboolean: vi.fn(() => true),
     lua_tostring: vi.fn(() => "test"),
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     lua_tojsstring: vi.fn((_L: unknown, _idx: number) => "test string"),
     lua_type: vi.fn(() => 3), // LUA_TNUMBER
+    lua_sethook: vi.fn(),
+    LUA_MASKCOUNT: 4,
+    LUA_OK: 0,
   },
   lauxlib: {
     luaL_newstate: vi.fn(() => ({})),
     luaL_loadstring: vi.fn(() => 0),
+    luaL_requiref: vi.fn(),
+    luaL_error: vi.fn(),
   },
   lualib: {
     luaL_openlibs: vi.fn(),
+    luaopen_base: vi.fn(),
+    luaopen_math: vi.fn(),
+    luaopen_string: vi.fn(),
+    luaopen_table: vi.fn(),
+    luaopen_utf8: vi.fn(),
   },
   to_luastring: vi.fn((str: string) => str),
   to_jsstring: vi.fn((str: string) => str),
@@ -202,6 +217,31 @@ end
       vm.loadScript("test", script);
 
       expect(() => vm.callFunction("on_update", 0.016)).not.toThrow();
+    });
+  });
+
+  describe("Sandbox Security", () => {
+    it("should start with no errors", () => {
+      const errorInfo = vm.getErrorInfo();
+      expect(errorInfo.hasError).toBe(false);
+      expect(errorInfo.lastError).toBe(null);
+      expect(errorInfo.errorCount).toBe(0);
+      expect(errorInfo.isDisabled).toBe(false);
+    });
+
+    it("should clear errors", () => {
+      vm.clearErrors();
+      const errorInfo = vm.getErrorInfo();
+      expect(errorInfo.hasError).toBe(false);
+      expect(errorInfo.errorCount).toBe(0);
+    });
+
+    it("should provide error info API", () => {
+      const errorInfo = vm.getErrorInfo();
+      expect(errorInfo).toHaveProperty("hasError");
+      expect(errorInfo).toHaveProperty("lastError");
+      expect(errorInfo).toHaveProperty("errorCount");
+      expect(errorInfo).toHaveProperty("isDisabled");
     });
   });
 });

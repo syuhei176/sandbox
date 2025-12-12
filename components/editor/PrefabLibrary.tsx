@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { PrefabDefinition } from "@/lib/types/gamespec";
 
 interface PrefabLibraryProps {
@@ -87,10 +88,12 @@ function PrefabCard({
       {/* Thumbnail */}
       <div className="aspect-square bg-gray-800 flex items-center justify-center relative">
         {prefab.thumbnail ? (
-          <img
+          <Image
             src={prefab.thumbnail}
             alt={prefab.name}
             className="w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 50vw, 25vw"
           />
         ) : (
           <svg

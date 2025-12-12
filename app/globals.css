@@ -1,26 +1,319 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
+/* ==================== CYBERPUNK WORKSHOP THEME ==================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core Colors - Deep Space Palette */
+  --void-black: #050510;
+  --deep-purple: #0f0820;
+  --darker-purple: #1a0f2e;
+  --panel-bg: #0d0618;
+  --panel-elevated: #13091f;
+
+  /* Neon Accent Colors */
+  --cyan-neon: #00e5ff;
+  --cyan-glow: rgba(0, 229, 255, 0.5);
+  --pink-neon: #ff00aa;
+  --pink-glow: rgba(255, 0, 170, 0.5);
+  --electric-blue: #0055ff;
+  --electric-glow: rgba(0, 85, 255, 0.5);
+  --neon-green: #39ff14;
+  --green-glow: rgba(57, 255, 20, 0.5);
+
+  /* UI Grays */
+  --ui-border: rgba(255, 255, 255, 0.1);
+  --ui-border-bright: rgba(0, 229, 255, 0.3);
+  --text-primary: #e8e8ff;
+  --text-secondary: #9898c8;
+  --text-muted: #5a5a7f;
+
+  /* Functional Colors */
+  --success: #39ff14;
+  --warning: #ffaa00;
+  --danger: #ff0055;
+  --info: #00e5ff;
+
+  /* Fonts */
+  --font-display: 'Rajdhani', sans-serif;
+  --font-code: 'IBM Plex Mono', 'Space Mono', monospace;
+  --font-ui: 'Rajdhani', system-ui, sans-serif;
+
+  /* Effects */
+  --glow-sm: 0 0 10px var(--cyan-glow);
+  --glow-md: 0 0 20px var(--cyan-glow), 0 0 40px var(--cyan-glow);
+  --glow-lg: 0 0 30px var(--cyan-glow), 0 0 60px var(--cyan-glow), 0 0 90px var(--cyan-glow);
+  --glow-pink: 0 0 20px var(--pink-glow), 0 0 40px var(--pink-glow);
+  --glow-green: 0 0 20px var(--green-glow);
+
+  /* Scanline */
+  --scanline-opacity: 0.03;
+  --scanline-speed: 8s;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--void-black);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ==================== BASE STYLES ==================== */
+
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--void-black);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-weight: 400;
+  overflow: hidden;
+  position: relative;
+  letter-spacing: 0.025em;
+}
+
+/* Scanline overlay effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    transparent 1px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 3px
+  );
+  opacity: var(--scanline-opacity);
+  animation: scanline var(--scanline-speed) linear infinite;
+}
+
+/* Grain texture overlay */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  mix-blend-mode: overlay;
+}
+
+/* ==================== ANIMATIONS ==================== */
+
+@keyframes scanline {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.8;
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes border-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: var(--glow-sm);
+  }
+  50% {
+    box-shadow: var(--glow-md);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+
+.cyber-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--ui-border);
+  position: relative;
+}
+
+.cyber-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--cyan-neon) 50%,
+    transparent
+  );
+  opacity: 0.3;
+}
+
+.cyber-panel-elevated {
+  background: var(--panel-elevated);
+  border: 1px solid var(--ui-border-bright);
+  box-shadow: 0 4px 24px rgba(0, 229, 255, 0.1);
+}
+
+.cyber-border {
+  position: relative;
+  border: 1px solid var(--ui-border);
+}
+
+.cyber-border::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    45deg,
+    var(--cyan-neon),
+    var(--pink-neon),
+    var(--electric-blue),
+    var(--cyan-neon)
+  );
+  background-size: 300% 300%;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s;
+  animation: border-flow 3s ease infinite;
+  pointer-events: none;
+}
+
+.cyber-border:hover::after {
+  opacity: 0.6;
+}
+
+.neon-text {
+  text-shadow:
+    0 0 10px var(--cyan-glow),
+    0 0 20px var(--cyan-glow),
+    0 0 30px var(--cyan-glow);
+  color: var(--cyan-neon);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.neon-text-pink {
+  text-shadow:
+    0 0 10px var(--pink-glow),
+    0 0 20px var(--pink-glow);
+  color: var(--pink-neon);
+}
+
+.neon-text-green {
+  text-shadow:
+    0 0 10px var(--green-glow);
+  color: var(--neon-green);
+}
+
+.glow-hover {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.glow-hover:hover {
+  box-shadow: var(--glow-md);
+  transform: translateY(-2px);
+}
+
+.holographic-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--cyan-neon),
+    var(--pink-neon),
+    var(--cyan-neon),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  opacity: 0.5;
+}
+
+/* ==================== SCROLLBAR STYLING ==================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--panel-bg);
+  border-left: 1px solid var(--ui-border);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--cyan-neon), var(--pink-neon));
+  border-radius: 4px;
+  box-shadow: var(--glow-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--pink-neon), var(--electric-blue));
+  box-shadow: var(--glow-md);
+}
+
+/* ==================== SELECTION ==================== */
+
+::selection {
+  background: var(--cyan-neon);
+  color: var(--void-black);
+}
+
+::-moz-selection {
+  background: var(--cyan-neon);
+  color: var(--void-black);
 }

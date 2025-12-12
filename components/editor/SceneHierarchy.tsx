@@ -22,10 +22,15 @@ export function SceneHierarchy({
   return (
     <div className="flex-1 flex flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b border-gray-700">
+      <div className="flex items-center gap-2 p-3" style={{ borderBottom: '1px solid var(--ui-border)' }}>
         <button
           onClick={onAddObject}
-          className="p-1 hover:bg-gray-700 rounded transition-colors"
+          className="p-2 rounded transition-all glow-hover"
+          style={{
+            background: 'rgba(0, 229, 255, 0.1)',
+            border: '1px solid var(--cyan-neon)',
+            color: 'var(--cyan-neon)'
+          }}
           title="Add GameObject"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -37,7 +42,12 @@ export function SceneHierarchy({
             selectedObjectId && onDuplicateObject(selectedObjectId)
           }
           disabled={!selectedObjectId}
-          className="p-1 hover:bg-gray-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="p-2 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{
+            background: selectedObjectId ? 'rgba(0, 229, 255, 0.05)' : 'transparent',
+            border: '1px solid var(--ui-border)',
+            color: selectedObjectId ? 'var(--text-primary)' : 'var(--text-muted)'
+          }}
           title="Duplicate Selected"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -47,7 +57,12 @@ export function SceneHierarchy({
         <button
           onClick={() => selectedObjectId && onDeleteObject(selectedObjectId)}
           disabled={!selectedObjectId}
-          className="p-1 hover:bg-red-900/50 text-red-400 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="p-2 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{
+            background: selectedObjectId ? 'rgba(255, 0, 85, 0.1)' : 'transparent',
+            border: '1px solid var(--ui-border)',
+            color: selectedObjectId ? 'var(--danger)' : 'var(--text-muted)'
+          }}
           title="Delete Selected"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -62,7 +77,12 @@ export function SceneHierarchy({
           <button
             onClick={onCreatePrefab}
             disabled={!selectedObjectId}
-            className="p-1 hover:bg-green-900/50 text-green-400 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ml-auto"
+            className="p-2 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed ml-auto glow-hover"
+            style={{
+              background: selectedObjectId ? 'rgba(57, 255, 20, 0.1)' : 'transparent',
+              border: selectedObjectId ? '1px solid var(--neon-green)' : '1px solid var(--ui-border)',
+              color: selectedObjectId ? 'var(--neon-green)' : 'var(--text-muted)'
+            }}
             title="Create Prefab from Selected"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -73,7 +93,7 @@ export function SceneHierarchy({
       </div>
 
       {/* GameObject List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2" style={{ background: 'var(--panel-bg)' }}>
         {gameObjects.map((obj) => (
           <GameObjectItem
             key={obj.id}
@@ -107,13 +127,21 @@ function GameObjectItem({
     <div>
       <div
         className={`
-          flex items-center px-2 py-1 rounded cursor-pointer hover:bg-gray-700
-          ${isSelected ? "bg-blue-600 hover:bg-blue-700" : ""}
+          flex items-center px-3 py-2 rounded cursor-pointer transition-all
+          ${isSelected ? "cyber-border glow-hover" : ""}
         `}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{
+          paddingLeft: `${depth * 16 + 12}px`,
+          background: isSelected ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+          border: isSelected ? '1px solid var(--cyan-neon)' : '1px solid transparent',
+          fontFamily: 'var(--font-display)',
+          letterSpacing: '0.03em'
+        }}
+        onMouseEnter={(e) => !isSelected && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)')}
+        onMouseLeave={(e) => !isSelected && (e.currentTarget.style.background = 'transparent')}
         onClick={() => onObjectSelect(gameObject.id)}
       >
-        <span className="text-sm">{gameObject.name}</span>
+        <span className="text-sm font-medium" style={{ color: isSelected ? 'var(--cyan-neon)' : 'var(--text-primary)' }}>{gameObject.name}</span>
       </div>
       {gameObject.children?.map((child) => (
         <GameObjectItem

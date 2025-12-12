@@ -26,6 +26,51 @@ import type {
 import { modelStorage } from "@/lib/utils/model-storage";
 import { GameEngine } from "@/lib/runtime/game-engine";
 
+// TransformControlsWrapper - disables OrbitControls during transformation
+function TransformControlsWrapper({
+  object,
+  mode,
+  translationSnap,
+  rotationSnap,
+  scaleSnap,
+  onObjectChange,
+  onTransformingChange,
+}: {
+  object: THREE.Object3D;
+  mode: 'translate' | 'rotate' | 'scale';
+  translationSnap?: number;
+  rotationSnap?: number;
+  scaleSnap?: number;
+  onObjectChange?: () => void;
+  onTransformingChange?: (transforming: boolean) => void;
+}) {
+  const controlsRef = useRef<typeof TransformControls.prototype | null>(null);
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const callback = (event: { value: boolean }) => {
+      onTransformingChange?.(event.value);
+    };
+
+    controls.addEventListener('dragging-changed', callback);
+    return () => controls.removeEventListener('dragging-changed', callback);
+  }, [onTransformingChange]);
+
+  return (
+    <TransformControls
+      ref={controlsRef}
+      object={object}
+      mode={mode}
+      translationSnap={translationSnap}
+      rotationSnap={rotationSnap}
+      scaleSnap={scaleSnap}
+      onObjectChange={onObjectChange}
+    />
+  );
+}
+
 // DropZoneHandler - handles prefab drop inside Canvas
 function DropZoneHandler({
   dropRequest,
@@ -100,9 +145,11 @@ export function Viewport3D({
     prefabId: string;
     mouseNDC: { x: number; y: number };
   } | null>(null);
+  const [isTransforming, setIsTransforming] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const orbitControlsRef = useRef<typeof OrbitControls.prototype | null>(null);
 
   // Handle drop events
   const handleDragOver = useCallback(
@@ -119,7 +166,7 @@ export function Viewport3D({
   );
 
   const handleDragLeave = useCallback(
-    (e: React.DragEvent) => {
+    () => {
       if (isPlayMode) return;
       setIsDragOver(false);
     },
@@ -159,12 +206,28 @@ export function Viewport3D({
     if (isPlayMode) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "w") setTransformMode("translate");
-      if (e.key === "e") setTransformMode("rotate");
-      if (e.key === "r") setTransformMode("scale");
+      // Only handle if not typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Prevent default behavior for these keys to avoid any conflicts
+      if (e.key === "w" || e.key === "W" || e.key === "e" || e.key === "E" || e.key === "r" || e.key === "R" ||
+          e.key === "a" || e.key === "A" || e.key === "s" || e.key === "S" || e.key === "d" || e.key === "D") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      const key = e.key.toLowerCase();
+      if (key === "w") setTransformMode("translate");
+      if (key === "e") setTransformMode("rotate");
+      if (key === "r") setTransformMode("scale");
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    // Use capture phase to intercept events before they reach other handlers
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [isPlayMode]);
 
   // Initialize/cleanup GameEngine for play mode
@@ -251,17 +314,17 @@ export function Viewport3D({
   }, []);
 
   return (
-    <div className="w-full h-full bg-gray-900 relative">
+    <div className="w-full h-full relative" style={{ background: 'var(--void-black)' }}>
       {/* Transform Mode Indicator (Edit Mode only) */}
       {!isPlayMode && (
-        <div className="absolute top-4 left-4 z-10 bg-black/50 text-white px-3 py-2 rounded text-sm">
-          Mode: {transformMode.toUpperCase()} (W/E/R to switch)
+        <div className="absolute top-4 left-4 z-10 px-4 py-2 rounded text-sm font-bold tracking-wider cyber-border" style={{ background: 'rgba(13, 6, 24, 0.9)', backdropFilter: 'blur(10px)', border: '1px solid var(--cyan-neon)', color: 'var(--cyan-neon)', fontFamily: 'var(--font-display)' }}>
+          MODE: {transformMode.toUpperCase()} <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>(W/E/R)</span>
         </div>
       )}
 
       {/* Play Mode Indicator */}
       {isPlayMode && (
-        <div className="absolute top-4 left-4 z-10 bg-green-600/80 text-white px-3 py-2 rounded text-sm font-semibold">
+        <div className="absolute top-4 left-4 z-10 px-4 py-2 rounded text-sm font-bold tracking-wider" style={{ background: 'rgba(57, 255, 20, 0.2)', backdropFilter: 'blur(10px)', border: '2px solid var(--neon-green)', color: 'var(--neon-green)', fontFamily: 'var(--font-display)', boxShadow: 'var(--glow-green)', animation: 'pulse-glow 2s ease-in-out infinite' }}>
           ▶ PLAY MODE
         </div>
       )}
@@ -274,11 +337,22 @@ export function Viewport3D({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           style={{
-            border: isDragOver ? "2px solid #3b82f6" : "2px solid transparent",
-            transition: "border-color 0.2s",
+            border: isDragOver ? "2px solid var(--cyan-neon)" : "2px solid transparent",
+            transition: "all 0.3s ease",
+            boxShadow: isDragOver ? 'var(--glow-md)' : 'none',
+            overflow: 'hidden',
+            position: 'relative'
           }}
         >
-          <Canvas camera={{ position: [5, 5, 5], fov: 75 }}>
+          <Canvas
+            camera={{ position: [5, 5, 5], fov: 75 }}
+            frameloop="always"
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'block'
+            }}
+          >
             {/* Drop Zone Handler */}
             <DropZoneHandler
               dropRequest={dropRequest}
@@ -313,11 +387,27 @@ export function Viewport3D({
                 transformMode={transformMode}
                 onSelect={onObjectSelect}
                 onTransformChange={onObjectTransformChange}
+                onTransformingChange={setIsTransforming}
               />
             ))}
 
             {/* Camera Controls */}
-            <OrbitControls makeDefault />
+            <OrbitControls
+              ref={orbitControlsRef}
+              makeDefault
+              enabled={!isTransforming}
+              enableDamping={false}
+              enableRotate={true}
+              enablePan={true}
+              enableZoom={true}
+              autoRotate={false}
+              listenToKeyEvents={undefined}
+              mouseButtons={{
+                LEFT: THREE.MOUSE.ROTATE,
+                MIDDLE: THREE.MOUSE.DOLLY,
+                RIGHT: THREE.MOUSE.PAN,
+              }}
+            />
           </Canvas>
         </div>
       )}
@@ -343,6 +433,7 @@ interface GameObjectRendererProps {
     objectId: string,
     transform: GameObject["transform"],
   ) => void;
+  onTransformingChange?: (transforming: boolean) => void;
 }
 
 const GameObjectRenderer = memo(function GameObjectRenderer({
@@ -351,6 +442,7 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
   transformMode,
   onSelect,
   onTransformChange,
+  onTransformingChange,
 }: GameObjectRendererProps) {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -421,19 +513,21 @@ const GameObjectRenderer = memo(function GameObjectRenderer({
             transformMode={transformMode}
             onSelect={onSelect}
             onTransformChange={onTransformChange}
+            onTransformingChange={onTransformingChange}
           />
         ))}
       </group>
 
       {/* eslint-disable react-hooks/refs */}
-      {isSelected && (
-        <TransformControls
-          object={groupRef.current!}
+      {isSelected && groupRef.current && (
+        <TransformControlsWrapper
+          object={groupRef.current}
           mode={transformMode}
           translationSnap={0.5}
           rotationSnap={Math.PI / 12}
           scaleSnap={0.1}
           onObjectChange={handleTransformChange}
+          onTransformingChange={onTransformingChange}
         />
       )}
       {/* eslint-enable react-hooks/refs */}

@@ -318,7 +318,7 @@ export default function Home() {
             onClick={() => router.push("/runtime")}
             className="btn-secondary"
           >
-            // View Runtime Demo
+            View Runtime Demo
           </button>
         </div>
       </div>

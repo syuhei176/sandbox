@@ -78,21 +78,31 @@ export function MenuBar({
   return (
     <div
       ref={menuBarRef}
-      className="h-8 bg-gray-800 border-b border-gray-700 flex items-center px-2 text-sm select-none"
+      className="h-10 flex items-center px-3 text-sm select-none"
+      style={{
+        background: 'var(--panel-elevated)',
+        fontFamily: 'var(--font-display)',
+        letterSpacing: '0.05em'
+      }}
     >
       {/* File Menu */}
       <div className="relative">
         <button
-          className={`px-3 py-1 hover:bg-gray-700 rounded ${
-            openMenu === "file" ? "bg-gray-700" : ""
+          className={`px-4 py-2 rounded font-semibold tracking-wider transition-all ${
+            openMenu === "file" ? "neon-text" : ""
           }`}
+          style={{
+            background: openMenu === "file" ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+            color: openMenu === "file" ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+            border: openMenu === "file" ? '1px solid var(--cyan-neon)' : '1px solid transparent'
+          }}
           onClick={() => handleMenuClick("file")}
           onMouseEnter={() => handleMenuHover("file")}
         >
-          File
+          FILE
         </button>
         {openMenu === "file" && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 mt-2 w-56 cyber-panel-elevated rounded-lg shadow-lg z-50 overflow-hidden" style={{ border: '1px solid var(--ui-border-bright)' }}>
             <MenuItem
               label="New Project"
               shortcut="Ctrl+N"
@@ -129,16 +139,21 @@ export function MenuBar({
       {/* Edit Menu */}
       <div className="relative">
         <button
-          className={`px-3 py-1 hover:bg-gray-700 rounded ${
-            openMenu === "edit" ? "bg-gray-700" : ""
+          className={`px-4 py-2 rounded font-semibold tracking-wider transition-all ${
+            openMenu === "edit" ? "neon-text" : ""
           }`}
+          style={{
+            background: openMenu === "edit" ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+            color: openMenu === "edit" ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+            border: openMenu === "edit" ? '1px solid var(--cyan-neon)' : '1px solid transparent'
+          }}
           onClick={() => handleMenuClick("edit")}
           onMouseEnter={() => handleMenuHover("edit")}
         >
-          Edit
+          EDIT
         </button>
         {openMenu === "edit" && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 mt-2 w-56 cyber-panel-elevated rounded-lg shadow-lg z-50 overflow-hidden" style={{ border: '1px solid var(--ui-border-bright)' }}>
             <MenuItem
               label="Duplicate"
               shortcut="Ctrl+D"
@@ -158,16 +173,21 @@ export function MenuBar({
       {/* Add Menu */}
       <div className="relative">
         <button
-          className={`px-3 py-1 hover:bg-gray-700 rounded ${
-            openMenu === "add" ? "bg-gray-700" : ""
+          className={`px-4 py-2 rounded font-semibold tracking-wider transition-all ${
+            openMenu === "add" ? "neon-text" : ""
           }`}
+          style={{
+            background: openMenu === "add" ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+            color: openMenu === "add" ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+            border: openMenu === "add" ? '1px solid var(--cyan-neon)' : '1px solid transparent'
+          }}
           onClick={() => handleMenuClick("add")}
           onMouseEnter={() => handleMenuHover("add")}
         >
-          Add
+          ADD
         </button>
         {openMenu === "add" && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 mt-2 w-56 cyber-panel-elevated rounded-lg shadow-lg z-50 overflow-hidden" style={{ border: '1px solid var(--ui-border-bright)' }}>
             <MenuItem
               label="GameObject"
               onClick={() => handleMenuItemClick(onAddGameObject)}
@@ -184,16 +204,21 @@ export function MenuBar({
       {/* View Menu */}
       <div className="relative">
         <button
-          className={`px-3 py-1 hover:bg-gray-700 rounded ${
-            openMenu === "view" ? "bg-gray-700" : ""
+          className={`px-4 py-2 rounded font-semibold tracking-wider transition-all ${
+            openMenu === "view" ? "neon-text" : ""
           }`}
+          style={{
+            background: openMenu === "view" ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+            color: openMenu === "view" ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+            border: openMenu === "view" ? '1px solid var(--cyan-neon)' : '1px solid transparent'
+          }}
           onClick={() => handleMenuClick("view")}
           onMouseEnter={() => handleMenuHover("view")}
         >
-          View
+          VIEW
         </button>
         {openMenu === "view" && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 mt-2 w-56 cyber-panel-elevated rounded-lg shadow-lg z-50 overflow-hidden" style={{ border: '1px solid var(--ui-border-bright)' }}>
             <MenuItem
               label="Reset Layout"
               onClick={() =>
@@ -208,16 +233,21 @@ export function MenuBar({
       {/* Help Menu */}
       <div className="relative">
         <button
-          className={`px-3 py-1 hover:bg-gray-700 rounded ${
-            openMenu === "help" ? "bg-gray-700" : ""
+          className={`px-4 py-2 rounded font-semibold tracking-wider transition-all ${
+            openMenu === "help" ? "neon-text" : ""
           }`}
+          style={{
+            background: openMenu === "help" ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+            color: openMenu === "help" ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+            border: openMenu === "help" ? '1px solid var(--cyan-neon)' : '1px solid transparent'
+          }}
           onClick={() => handleMenuClick("help")}
           onMouseEnter={() => handleMenuHover("help")}
         >
-          Help
+          HELP
         </button>
         {openMenu === "help" && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 mt-2 w-56 cyber-panel-elevated rounded-lg shadow-lg z-50 overflow-hidden" style={{ border: '1px solid var(--ui-border-bright)' }}>
             <MenuItem
               label="Documentation"
               onClick={() =>
@@ -258,22 +288,29 @@ interface MenuItemProps {
 function MenuItem({ label, shortcut, onClick, disabled }: MenuItemProps) {
   return (
     <button
-      className={`w-full text-left px-3 py-2 flex items-center justify-between ${
+      className={`w-full text-left px-4 py-3 flex items-center justify-between font-medium tracking-wide transition-all ${
         disabled
-          ? "text-gray-500 cursor-not-allowed"
-          : "hover:bg-gray-700 text-gray-200"
+          ? "cursor-not-allowed opacity-40"
+          : ""
       }`}
+      style={{
+        background: disabled ? 'transparent' : undefined,
+        color: disabled ? 'var(--text-muted)' : 'var(--text-primary)',
+        fontFamily: 'var(--font-display)'
+      }}
+      onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = 'rgba(0, 229, 255, 0.1)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
     >
-      <span>{label}</span>
+      <span>{label.toUpperCase()}</span>
       {shortcut && (
-        <span className="text-xs text-gray-500 ml-4">{shortcut}</span>
+        <span className="text-xs ml-6" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-code)' }}>{shortcut}</span>
       )}
     </button>
   );
 }
 
 function MenuDivider() {
-  return <div className="h-px bg-gray-700 my-1" />;
+  return <div className="holographic-divider my-1" />;
 }
