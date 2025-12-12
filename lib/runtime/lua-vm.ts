@@ -142,6 +142,7 @@ export class LuaVM {
     // Set a debug hook that checks execution time every N instructions
     // This prevents infinite loops and excessive computation
     const hookMask = this.lua.LUA_MASKCOUNT;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hookCallback = (L: any) => {
       if (!this.isExecuting) return;
 
