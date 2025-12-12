@@ -191,6 +191,65 @@ Each GameObject can have an attached Lua script (via `script_id`). The Lua VM pr
 
 **Important**: The Lua VM uses fengari-web and is browser-only (will throw error in SSR context).
 
+### Lua Sandbox Security
+
+The Lua VM implements a sandboxed environment to protect against malicious or buggy scripts:
+
+**Security Measures:**
+
+1. **Restricted Libraries** - Only safe standard libraries are enabled:
+   - ✅ Enabled: `base`, `math`, `string`, `table`, `utf8`
+   - ❌ Disabled: `io` (file I/O), `os` (system calls), `debug` (introspection), `package` (module loading)
+
+2. **Disabled Functions** - Dangerous functions are explicitly removed:
+   - `dofile`, `loadfile`, `load`, `loadstring`, `require` (code execution)
+   - `collectgarbage` (timing attacks)
+
+3. **Environment Isolation** - Each GameObject script runs in a protected environment:
+   - Scripts cannot create new global variables (prevents typos and pollution)
+   - Must use `local` keyword for all variables
+   - Attempting to create globals throws an error with helpful message
+
+4. **Execution Timeout** - Scripts are monitored for excessive execution time:
+   - Maximum execution time: 16ms per frame (~1 frame at 60fps)
+   - Debug hook checks every 1000 instructions
+   - Infinite loops are automatically detected and terminated
+
+5. **Error Tracking** - Runtime errors are tracked and scripts are auto-disabled:
+   - After 10 errors, script execution is halted
+   - Timeout also disables the script
+   - Errors are logged with context for debugging
+
+**API for Error Handling:**
+
+```typescript
+// Check script health
+const errorInfo = luaVM.getErrorInfo();
+// { hasError: boolean, lastError: string | null, errorCount: number, isDisabled: boolean }
+
+// Clear errors after fixing script
+luaVM.clearErrors();
+```
+
+**Example Malicious Scripts (Now Blocked):**
+
+```lua
+-- ❌ Infinite loop - will timeout after 16ms
+function on_update(dt)
+  while true do end
+end
+
+-- ❌ Global variable typo - will error immediately
+function on_start()
+  palyer = find_gameobject("Player")  -- typo: should be 'local player'
+end
+
+-- ❌ File I/O - io library disabled
+function on_start()
+  local file = io.open("secret.txt", "r")  -- io is nil
+end
+```
+
 ## Path Aliases
 
 TypeScript is configured with path alias `@/*` mapping to repository root, so imports use:
