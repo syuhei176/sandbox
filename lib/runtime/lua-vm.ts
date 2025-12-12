@@ -24,11 +24,19 @@ export class LuaVM {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private L: any;
   private allGameObjects: Map<string, GameObjectInstance> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private gameEngine: any = null;
+  private currentGameObjectId: string = "";
 
   constructor() {
     if (typeof window === "undefined") {
       throw new Error("LuaVM can only be used in browser environment");
     }
+  }
+
+  setGameEngine(engine: unknown, gameObjectId: string): void {
+    this.gameEngine = engine;
+    this.currentGameObjectId = gameObjectId;
   }
 
   async initialize(): Promise<void> {
@@ -49,6 +57,9 @@ export class LuaVM {
     // We use a simple Lua function that accesses the all_gameobjects global table
     // which is updated each frame with the latest GameObject positions
     this.registerStubFindGameObject();
+
+    // Register animation control functions (stubs that will call gameEngine methods)
+    this.registerAnimationFunctions();
   }
 
   private registerStubFindGameObject(): void {
@@ -63,6 +74,195 @@ end
 `;
     this.lauxlib.luaL_loadstring(this.L, this.to_luastring(stubCode));
     this.lua.lua_pcall(this.L, 0, 0, 0);
+  }
+
+  private registerAnimationFunctions(): void {
+    // Register animation control functions
+    // These are Lua wrappers that will call the _internal_* functions
+    // which are implemented in TypeScript
+    const animCode = `
+function play_animation(clip_name, options)
+  options = options or {}
+  local loop = options.loop
+  local speed = options.speed
+  local fade = options.fadeTime or options.fade
+  _internal_play_animation(clip_name, loop, speed, fade)
+end
+
+function pause_animation()
+  _internal_pause_animation()
+end
+
+function resume_animation()
+  _internal_resume_animation()
+end
+
+function stop_animation()
+  _internal_stop_animation()
+end
+
+function set_animation_speed(speed)
+  _internal_set_animation_speed(speed)
+end
+
+function set_animation_time(time)
+  _internal_set_animation_time(time)
+end
+`;
+    this.lauxlib.luaL_loadstring(this.L, this.to_luastring(animCode));
+    this.lua.lua_pcall(this.L, 0, 0, 0);
+
+    // Register the _internal_* functions that call gameEngine methods
+    // These need to be set as global functions
+    this.registerInternalAnimationFunctions();
+  }
+
+  private registerInternalAnimationFunctions(): void {
+    // _internal_play_animation
+    const playAnimCode = `
+_internal_play_animation = function(clip_name, loop, speed, fade)
+  -- This will be overridden when setGameEngine is called
+  -- For now it's a no-op
+end
+`;
+    this.lauxlib.luaL_loadstring(this.L, this.to_luastring(playAnimCode));
+    this.lua.lua_pcall(this.L, 0, 0, 0);
+
+    // Similar stubs for other functions
+    const otherFuncsCode = `
+_internal_pause_animation = function() end
+_internal_resume_animation = function() end
+_internal_stop_animation = function() end
+_internal_set_animation_speed = function(speed) end
+_internal_set_animation_time = function(time) end
+`;
+    this.lauxlib.luaL_loadstring(this.L, this.to_luastring(otherFuncsCode));
+    this.lua.lua_pcall(this.L, 0, 0, 0);
+  }
+
+  updateInternalAnimationFunctions(): void {
+    if (!this.gameEngine || !this.L) return;
+
+    // Instead of trying to bind JS functions to Lua (which is complex with Fengari),
+    // we use a simple approach: Lua functions set a global command table,
+    // and GameEngine reads and executes these commands
+    const simpleCode = `
+_current_animation_command = nil
+
+_internal_play_animation = function(clip_name, loop, speed, fade)
+  _current_animation_command = {
+    action = "play",
+    clip_name = clip_name,
+    loop = loop,
+    speed = speed,
+    fade = fade
+  }
+end
+
+_internal_pause_animation = function()
+  _current_animation_command = { action = "pause" }
+end
+
+_internal_resume_animation = function()
+  _current_animation_command = { action = "resume" }
+end
+
+_internal_stop_animation = function()
+  _current_animation_command = { action = "stop" }
+end
+
+_internal_set_animation_speed = function(speed)
+  _current_animation_command = { action = "set_speed", speed = speed }
+end
+
+_internal_set_animation_time = function(time)
+  _current_animation_command = { action = "set_time", time = time }
+end
+`;
+
+    this.lauxlib.luaL_loadstring(this.L, this.to_luastring(simpleCode));
+    this.lua.lua_pcall(this.L, 0, 0, 0);
+  }
+
+  getAnimationCommand(): {
+    action: string;
+    clip_name?: string;
+    loop?: boolean;
+    speed?: number;
+    fade?: number;
+    time?: number;
+  } | null {
+    if (!this.L) return null;
+
+    // Get _current_animation_command global
+    this.lua.lua_getglobal(this.L, this.to_luastring("_current_animation_command"));
+
+    if (this.lua.lua_isnil(this.L, -1)) {
+      this.lua.lua_pop(this.L, 1);
+      return null;
+    }
+
+    if (!this.lua.lua_istable(this.L, -1)) {
+      this.lua.lua_pop(this.L, 1);
+      return null;
+    }
+
+    // Read table fields
+    const command: {
+      action: string;
+      clip_name?: string;
+      loop?: boolean;
+      speed?: number;
+      fade?: number;
+      time?: number;
+    } = {
+      action: this.getStringField(-1, "action") || "",
+    };
+
+    const clipName = this.getStringField(-1, "clip_name");
+    if (clipName) command.clip_name = clipName;
+
+    const loop = this.getBooleanField(-1, "loop");
+    if (loop !== null) command.loop = loop;
+
+    const speed = this.getNumberField(-1, "speed");
+    if (speed !== 0) command.speed = speed;
+
+    const fade = this.getNumberField(-1, "fade");
+    if (fade !== 0) command.fade = fade;
+
+    const time = this.getNumberField(-1, "time");
+    if (time !== 0) command.time = time;
+
+    this.lua.lua_pop(this.L, 1);
+
+    // Clear the command
+    this.lua.lua_pushnil(this.L);
+    this.lua.lua_setglobal(this.L, this.to_luastring("_current_animation_command"));
+
+    return command;
+  }
+
+  private getStringField(tableIndex: number, fieldName: string): string | null {
+    this.lua.lua_getfield(this.L, tableIndex, this.to_luastring(fieldName));
+    if (this.lua.lua_isstring(this.L, -1)) {
+      const value = this.lua.lua_tojsstring(this.L, -1);
+      this.lua.lua_pop(this.L, 1);
+      return value;
+    }
+    this.lua.lua_pop(this.L, 1);
+    return null;
+  }
+
+  private getBooleanField(tableIndex: number, fieldName: string): boolean | null {
+    this.lua.lua_getfield(this.L, tableIndex, this.to_luastring(fieldName));
+    if (this.lua.lua_isboolean(this.L, -1)) {
+      const value = this.lua.lua_toboolean(this.L, -1);
+      this.lua.lua_pop(this.L, 1);
+      return value;
+    }
+    this.lua.lua_pop(this.L, 1);
+    return null;
   }
 
   loadScript(scriptCode: string, scriptId: string): boolean {
@@ -245,6 +445,75 @@ end
     this.lua.lua_setglobal(this.L, this.to_luastring("all_gameobjects"));
   }
 
+  setAnimationState(animationData: {
+    clipNames: string[];
+    activeClipName: string | null;
+    isPlaying: boolean;
+    loop: boolean;
+    speed: number;
+    activeAction: { time: number; getClip: () => { duration: number } } | null;
+  } | null): void {
+    if (!this.L) return;
+
+    if (!animationData) {
+      // No animation data - set animation to nil
+      this.lua.lua_pushnil(this.L);
+      this.lua.lua_setglobal(this.L, this.to_luastring("animation"));
+      return;
+    }
+
+    // Create animation table
+    this.lua.lua_newtable(this.L);
+
+    // clips array
+    this.lua.lua_pushstring(this.L, this.to_luastring("clips"));
+    this.lua.lua_newtable(this.L);
+    for (let i = 0; i < animationData.clipNames.length; i++) {
+      this.lua.lua_pushnumber(this.L, i + 1); // Lua arrays are 1-indexed
+      this.lua.lua_pushstring(this.L, this.to_luastring(animationData.clipNames[i]));
+      this.lua.lua_settable(this.L, -3);
+    }
+    this.lua.lua_settable(this.L, -3);
+
+    // current (current clip name or nil)
+    this.lua.lua_pushstring(this.L, this.to_luastring("current"));
+    if (animationData.activeClipName) {
+      this.lua.lua_pushstring(this.L, this.to_luastring(animationData.activeClipName));
+    } else {
+      this.lua.lua_pushnil(this.L);
+    }
+    this.lua.lua_settable(this.L, -3);
+
+    // time (current playback time)
+    this.lua.lua_pushstring(this.L, this.to_luastring("time"));
+    this.lua.lua_pushnumber(this.L, animationData.activeAction?.time || 0);
+    this.lua.lua_settable(this.L, -3);
+
+    // duration (duration of current clip)
+    this.lua.lua_pushstring(this.L, this.to_luastring("duration"));
+    const duration = animationData.activeAction?.getClip().duration || 0;
+    this.lua.lua_pushnumber(this.L, duration);
+    this.lua.lua_settable(this.L, -3);
+
+    // is_playing
+    this.lua.lua_pushstring(this.L, this.to_luastring("is_playing"));
+    this.lua.lua_pushboolean(this.L, animationData.isPlaying);
+    this.lua.lua_settable(this.L, -3);
+
+    // loop
+    this.lua.lua_pushstring(this.L, this.to_luastring("loop"));
+    this.lua.lua_pushboolean(this.L, animationData.loop);
+    this.lua.lua_settable(this.L, -3);
+
+    // speed
+    this.lua.lua_pushstring(this.L, this.to_luastring("speed"));
+    this.lua.lua_pushnumber(this.L, animationData.speed);
+    this.lua.lua_settable(this.L, -3);
+
+    // Set as global
+    this.lua.lua_setglobal(this.L, this.to_luastring("animation"));
+  }
+
   private pushVector3(vec: { x: number; y: number; z: number }): void {
     this.lua.lua_newtable(this.L);
 
@@ -384,6 +653,27 @@ end
 
   onTriggerExit(otherObject: GameObject): void {
     this.callCollisionCallback("on_trigger_exit", otherObject);
+  }
+
+  onAnimationComplete(clipName: string): void {
+    if (!this.L) return;
+
+    this.lua.lua_getglobal(this.L, this.to_luastring("on_animation_complete"));
+
+    if (!this.lua.lua_isfunction(this.L, -1)) {
+      this.lua.lua_pop(this.L, 1);
+      return;
+    }
+
+    // Push clip name as argument
+    this.lua.lua_pushstring(this.L, this.to_luastring(clipName));
+
+    // Call function with 1 argument
+    if (this.lua.lua_pcall(this.L, 1, 0, 0) !== this.lua.LUA_OK) {
+      const errorMsg = this.lua.lua_tojsstring(this.L, -1);
+      console.error(`Lua on_animation_complete error:`, errorMsg);
+      this.lua.lua_pop(this.L, 1);
+    }
   }
 
   private callCollisionCallback(

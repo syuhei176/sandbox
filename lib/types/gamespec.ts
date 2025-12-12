@@ -97,6 +97,12 @@ export type GeometryType =
 // - model_url: URL to remote GLB/GLTF file
 // - model_data: Base64-encoded GLB data for inline storage
 // - model_prompt: Original text prompt used for AI generation (optional)
+//
+// Animation properties (for models with embedded animations):
+// - autoPlayAnimation: boolean - Auto-play animation on load (default: true)
+// - defaultAnimation: string - Name of clip to play on start (default: first clip)
+// - animationLoop: boolean - Loop animation playback (default: true)
+// - animationSpeed: number - Playback speed multiplier (default: 1.0)
 
 // Collision properties for mesh components:
 // - hasCollision: boolean - Enable collision detection for this mesh

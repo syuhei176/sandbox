@@ -14,6 +14,19 @@ interface ColliderData {
   originalRadius?: number;
 }
 
+interface AnimationData {
+  gameObjectId: string;
+  mixer: THREE.AnimationMixer;
+  clips: Map<string, THREE.AnimationClip>;
+  activeAction: THREE.AnimationAction | null;
+  activeClipName: string | null;
+  clipNames: string[];
+  isPlaying: boolean;
+  loop: boolean;
+  speed: number;
+  finishedClips: string[];
+}
+
 export class GameEngine {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
@@ -31,6 +44,7 @@ export class GameEngine {
   private colliders: Map<string, ColliderData> = new Map();
   private previousCollisions: Set<string> = new Set();
   private shouldUsePointerLock: boolean = false;
+  private animations: Map<string, AnimationData> = new Map();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -85,6 +99,14 @@ export class GameEngine {
     this.scripts.clear();
     this.colliders.clear();
     this.previousCollisions.clear();
+
+    // Clear animations
+    for (const animData of this.animations.values()) {
+      if (animData.activeAction) {
+        animData.activeAction.stop();
+      }
+    }
+    this.animations.clear();
 
     // Load all scripts
     for (const script of gameSpec.scripts) {
@@ -193,6 +215,10 @@ export class GameEngine {
       await luaVM.initialize();
       const scriptCode = this.scripts.get(gameObject.script_id)!;
       if (luaVM.loadScript(scriptCode, gameObject.script_id)) {
+        // Set game engine reference and object ID for animation control
+        luaVM.setGameEngine(this, gameObject.id);
+        luaVM.updateInternalAnimationFunctions();
+
         luaVM.setGameObject(gameObject);
         luaVM.onStart();
       } else {
@@ -245,7 +271,7 @@ export class GameEngine {
 
     // Handle custom models
     if (props.geometry === "custom_model") {
-      await this.loadCustomModel(object3D, props);
+      await this.loadCustomModel(object3D, props, gameObjectId);
       return;
     }
 
@@ -308,6 +334,7 @@ export class GameEngine {
   private async loadCustomModel(
     object3D: THREE.Object3D,
     props: Record<string, unknown>,
+    gameObjectId: string,
   ): Promise<void> {
     const loader = new GLTFLoader();
     const modelId = props.model_id as string | undefined;
@@ -338,6 +365,11 @@ export class GameEngine {
       // Add the loaded scene to the object
       object3D.add(gltf.scene);
 
+      // Extract animations if present
+      if (gltf.animations && gltf.animations.length > 0) {
+        this.createAnimationMixer(gameObjectId, object3D, gltf.animations, props);
+      }
+
       // Clean up blob URL if created
       if (modelId && url.startsWith("blob:")) {
         URL.revokeObjectURL(url);
@@ -356,6 +388,56 @@ export class GameEngine {
       const errorMesh = new THREE.Mesh(errorGeometry, errorMaterial);
       object3D.add(errorMesh);
     }
+  }
+
+  private createAnimationMixer(
+    gameObjectId: string,
+    object3D: THREE.Object3D,
+    animations: THREE.AnimationClip[],
+    properties: Record<string, unknown>,
+  ): void {
+    const mixer = new THREE.AnimationMixer(object3D);
+    const clips = new Map<string, THREE.AnimationClip>();
+    const clipNames: string[] = [];
+
+    // Store all animation clips
+    for (const clip of animations) {
+      clips.set(clip.name, clip);
+      clipNames.push(clip.name);
+    }
+
+    // Get animation configuration from properties
+    const autoPlay = properties.autoPlayAnimation !== false; // default true
+    const defaultAnimationName = properties.defaultAnimation as string | undefined;
+    const loop = properties.animationLoop !== false; // default true
+    const speed = (properties.animationSpeed as number) || 1.0;
+
+    // Create animation data
+    const animData: AnimationData = {
+      gameObjectId,
+      mixer,
+      clips,
+      activeAction: null,
+      activeClipName: null,
+      clipNames,
+      isPlaying: false,
+      loop,
+      speed,
+      finishedClips: [],
+    };
+
+    this.animations.set(gameObjectId, animData);
+
+    // Auto-play default animation if configured
+    if (autoPlay && clipNames.length > 0) {
+      const clipToPlay = defaultAnimationName || clipNames[0];
+      this.playAnimation(gameObjectId, clipToPlay, { loop, speed });
+    }
+
+    console.log(
+      `Created animation mixer for ${gameObjectId} with ${clipNames.length} clips:`,
+      clipNames,
+    );
   }
 
   private createCollider(
@@ -760,7 +842,43 @@ export class GameEngine {
     this.render();
   };
 
+  private updateAnimations(deltaTime: number): void {
+    // Update all animation mixers
+    for (const [id, animData] of this.animations) {
+      animData.mixer.update(deltaTime);
+
+      // Check for non-looping animations that have finished
+      if (animData.activeAction && !animData.loop && animData.isPlaying) {
+        const duration = animData.activeAction.getClip().duration;
+        const time = animData.activeAction.time;
+
+        // Check if animation has reached the end (with small epsilon for precision)
+        if (time >= duration - 0.01 && !animData.activeAction.paused) {
+          // Mark as finished only once
+          if (!animData.finishedClips.includes(animData.activeClipName!)) {
+            animData.finishedClips.push(animData.activeClipName!);
+            animData.isPlaying = false;
+          }
+        }
+      }
+    }
+
+    // Process finished animation callbacks
+    for (const [id, animData] of this.animations) {
+      while (animData.finishedClips.length > 0) {
+        const clipName = animData.finishedClips.shift()!;
+        const instance = this.gameObjects.get(id);
+        if (instance?.luaVM) {
+          instance.luaVM.onAnimationComplete(clipName);
+        }
+      }
+    }
+  }
+
   private update(deltaTime: number): void {
+    // Update animations before everything else
+    this.updateAnimations(deltaTime);
+
     // Save previous positions before update
     for (const instance of this.gameObjects.values()) {
       if (this.colliders.has(instance.id)) {
@@ -778,6 +896,10 @@ export class GameEngine {
     // Update all game objects with scripts
     for (const instance of this.gameObjects.values()) {
       if (instance.luaVM) {
+        // Set animation state before calling update
+        const animData = this.animations.get(instance.id);
+        instance.luaVM.setAnimationState(animData || null);
+
         // Set input state before calling update
         instance.luaVM.setInputState(this.keyboardState);
         instance.luaVM.setMouseMovement(this.mouseMovement);
@@ -785,6 +907,12 @@ export class GameEngine {
 
         // Call Lua update
         instance.luaVM.onUpdate(deltaTime);
+
+        // Process animation commands from Lua
+        const animCommand = instance.luaVM.getAnimationCommand();
+        if (animCommand) {
+          this.executeAnimationCommand(instance.id, animCommand);
+        }
 
         // Read back transform from Lua and apply to three.js AND gameObject
         const transform = instance.luaVM.getGameObjectTransform();
@@ -888,6 +1016,146 @@ export class GameEngine {
     this.renderer.setSize(width, height);
   }
 
+  // Animation control methods
+  playAnimation(
+    objectId: string,
+    clipName: string,
+    options?: { loop?: boolean; speed?: number; fadeTime?: number },
+  ): boolean {
+    const animData = this.animations.get(objectId);
+    if (!animData) {
+      console.warn(`No animation data for object ${objectId}`);
+      return false;
+    }
+
+    const clip = animData.clips.get(clipName);
+    if (!clip) {
+      console.warn(`Animation clip "${clipName}" not found for object ${objectId}`);
+      return false;
+    }
+
+    // Stop current action if any
+    if (animData.activeAction) {
+      const fadeTime = options?.fadeTime ?? 0.25;
+      animData.activeAction.fadeOut(fadeTime);
+    }
+
+    // Create and configure new action
+    const action = animData.mixer.clipAction(clip);
+    action.reset();
+    action.setLoop(
+      options?.loop ?? animData.loop ? THREE.LoopRepeat : THREE.LoopOnce,
+      Infinity,
+    );
+    action.timeScale = options?.speed ?? animData.speed;
+    action.clampWhenFinished = true;
+
+    // Fade in if there was a previous action
+    if (animData.activeAction && options?.fadeTime) {
+      action.fadeIn(options.fadeTime);
+    }
+
+    action.play();
+
+    // Update animation data
+    animData.activeAction = action;
+    animData.activeClipName = clipName;
+    animData.isPlaying = true;
+    animData.loop = options?.loop ?? animData.loop;
+    animData.speed = options?.speed ?? animData.speed;
+
+    console.log(`Playing animation "${clipName}" for ${objectId}`);
+    return true;
+  }
+
+  pauseAnimation(objectId: string): void {
+    const animData = this.animations.get(objectId);
+    if (!animData || !animData.activeAction) return;
+
+    animData.activeAction.paused = true;
+    animData.isPlaying = false;
+  }
+
+  resumeAnimation(objectId: string): void {
+    const animData = this.animations.get(objectId);
+    if (!animData || !animData.activeAction) return;
+
+    animData.activeAction.paused = false;
+    animData.isPlaying = true;
+  }
+
+  stopAnimation(objectId: string): void {
+    const animData = this.animations.get(objectId);
+    if (!animData || !animData.activeAction) return;
+
+    animData.activeAction.stop();
+    animData.activeAction = null;
+    animData.activeClipName = null;
+    animData.isPlaying = false;
+  }
+
+  setAnimationSpeed(objectId: string, speed: number): void {
+    const animData = this.animations.get(objectId);
+    if (!animData || !animData.activeAction) return;
+
+    animData.activeAction.timeScale = speed;
+    animData.speed = speed;
+  }
+
+  setAnimationTime(objectId: string, time: number): void {
+    const animData = this.animations.get(objectId);
+    if (!animData || !animData.activeAction) return;
+
+    animData.activeAction.time = time;
+  }
+
+  getAnimationState(objectId: string): AnimationData | null {
+    return this.animations.get(objectId) || null;
+  }
+
+  private executeAnimationCommand(
+    objectId: string,
+    command: {
+      action: string;
+      clip_name?: string;
+      loop?: boolean;
+      speed?: number;
+      fade?: number;
+      time?: number;
+    },
+  ): void {
+    switch (command.action) {
+      case "play":
+        if (command.clip_name) {
+          this.playAnimation(objectId, command.clip_name, {
+            loop: command.loop,
+            speed: command.speed,
+            fadeTime: command.fade,
+          });
+        }
+        break;
+      case "pause":
+        this.pauseAnimation(objectId);
+        break;
+      case "resume":
+        this.resumeAnimation(objectId);
+        break;
+      case "stop":
+        this.stopAnimation(objectId);
+        break;
+      case "set_speed":
+        if (command.speed !== undefined) {
+          this.setAnimationSpeed(objectId, command.speed);
+        }
+        break;
+      case "set_time":
+        if (command.time !== undefined) {
+          this.setAnimationTime(objectId, command.time);
+        }
+        break;
+    }
+  }
+
   getDebugInfo(): {
     playerPos?: { x: number; y: number; z: number };
     cameraPos?: { x: number; y: number; z: number };
@@ -947,6 +1215,14 @@ export class GameEngine {
         instance.luaVM.destroy();
       }
     }
+
+    // Stop all animations
+    for (const animData of this.animations.values()) {
+      if (animData.activeAction) {
+        animData.activeAction.stop();
+      }
+    }
+    this.animations.clear();
 
     this.gameObjects.clear();
     this.scripts.clear();
