@@ -287,6 +287,56 @@ export const fpsTemplate: GameTemplate = {
       ],
       script_id: "script-target",
     },
+    // Animated NPC Guard (example with custom_model)
+    // NOTE: This is an example - you'll need to provide your own GLTF model with animations
+    // For testing, you can use models from https://www.mixamo.com or https://readyplayer.me
+    {
+      id: "obj-animated-guard",
+      name: "AnimatedGuard",
+      transform: {
+        position: { x: -8, y: 0, z: -8 },
+        rotation: { x: 0, y: Math.PI / 4, z: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+      },
+      components: [
+        {
+          type: "mesh",
+          properties: {
+            // For demonstration purposes, we use a simple box as placeholder
+            // To use an animated GLTF model:
+            // 1. Uncomment geometry: "custom_model" and model_url below
+            // 2. Comment out or remove the box geometry properties (geometry, color, width, height, depth)
+            // Example models with animations:
+            // - Mixamo: https://www.mixamo.com (download as FBX, convert to GLB)
+            // - Ready Player Me: https://readyplayer.me
+            // - Sketchfab: https://sketchfab.com (search for "animated character")
+
+            // geometry: "custom_model",
+            // model_url: "https://example.com/animated-character.glb",
+
+            // Box placeholder (remove when using custom_model):
+            geometry: "box",
+            color: 0x4444ff,
+            width: 0.8,
+            height: 1.8,
+            depth: 0.8,
+
+            // Animation configuration (applies when using custom_model with animations)
+            autoPlayAnimation: true,
+            defaultAnimation: "Idle", // Common animation names: "Idle", "Walk", "Run", "Attack"
+            animationLoop: true,
+            animationSpeed: 1.0,
+
+            // Collision
+            hasCollision: true,
+            collisionShape: "box",
+            isTrigger: false,
+            collisionLayer: 3,
+          },
+        },
+      ],
+      script_id: "script-animated-guard",
+    },
     // FPS Player (invisible collider)
     {
       id: "obj-fps-player",
@@ -572,6 +622,112 @@ function on_update(dt)
     gameobject.transform.position.z = camera.transform.position.z + rotated_z
 
     gameobject.transform.rotation.y = cam_rot_y
+  end
+end`,
+    },
+    {
+      id: "script-animated-guard",
+      name: "AnimatedGuardAI",
+      lua_code: `-- Animated Guard AI with state machine
+-- This script demonstrates animation control based on player distance
+local state = "idle"
+local detection_range = 15
+local attack_range = 3
+local patrol_speed = 2
+local chase_speed = 4
+
+function on_start()
+  print("Animated Guard spawned")
+
+  -- Check if this GameObject has animations
+  if animation and animation.clips then
+    print("Available animations:", table.concat(animation.clips, ", "))
+    play_animation("Idle")
+  else
+    print("No animations available (using box placeholder)")
+  end
+end
+
+function on_update(dt)
+  if not gameobject then return end
+
+  local player = find_gameobject("FPSPlayer")
+  if not player then return end
+
+  -- Calculate distance to player
+  local dx = player.transform.position.x - gameobject.transform.position.x
+  local dz = player.transform.position.z - gameobject.transform.position.z
+  local distance = math.sqrt(dx * dx + dz * dz)
+
+  -- State machine based on distance
+  if distance < attack_range then
+    -- Attack state
+    if state ~= "attack" then
+      state = "attack"
+      if animation then
+        play_animation("Attack", {loop = false})
+      end
+      print("Guard: Attacking!")
+    end
+  elseif distance < detection_range then
+    -- Chase state
+    if state ~= "chase" then
+      state = "chase"
+      if animation then
+        play_animation("Run", {loop = true, speed = 1.2})
+      end
+      print("Guard: Detected player, chasing!")
+    end
+
+    -- Move towards player
+    local dir_x = dx / distance
+    local dir_z = dz / distance
+    gameobject.transform.position.x = gameobject.transform.position.x + dir_x * chase_speed * dt
+    gameobject.transform.position.z = gameobject.transform.position.z + dir_z * chase_speed * dt
+
+    -- Face player
+    local angle = math.atan2(dx, dz)
+    gameobject.transform.rotation.y = angle
+  else
+    -- Idle/Patrol state
+    if state ~= "idle" then
+      state = "idle"
+      if animation then
+        play_animation("Idle")
+      end
+      print("Guard: Idle")
+    end
+  end
+
+  -- Debug output
+  if animation and animation.current then
+    print(string.format("Guard: state=%s, anim=%s, dist=%.1f",
+      state, animation.current, distance))
+  end
+end
+
+function on_animation_complete(clip_name)
+  -- When attack animation finishes, return to appropriate state
+  if clip_name == "Attack" then
+    print("Guard: Attack animation complete")
+    local player = find_gameobject("FPSPlayer")
+    if player then
+      local dx = player.transform.position.x - gameobject.transform.position.x
+      local dz = player.transform.position.z - gameobject.transform.position.z
+      local distance = math.sqrt(dx * dx + dz * dz)
+
+      if distance < detection_range then
+        state = "chase"
+        if animation then
+          play_animation("Run", {loop = true})
+        end
+      else
+        state = "idle"
+        if animation then
+          play_animation("Idle")
+        end
+      end
+    end
   end
 end`,
     },
