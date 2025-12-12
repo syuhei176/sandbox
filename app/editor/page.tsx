@@ -513,9 +513,9 @@ export default function EditorPage() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-gray-900 text-gray-100 flex-col">
+    <div className="flex h-screen w-screen flex-col" style={{ background: 'var(--void-black)', color: 'var(--text-primary)' }}>
       {/* Menu Bar */}
-      <div className="flex items-stretch border-b border-gray-700">
+      <div className="flex items-stretch cyber-panel" style={{ borderBottom: '1px solid var(--ui-border-bright)' }}>
         <MenuBar
           onNewProject={handleNewProject}
           onSave={handleSaveCurrentProject}
@@ -548,15 +548,20 @@ export default function EditorPage() {
           hasSelection={!!selectedObjectId}
           canSaveAs={!!currentProjectName}
         />
-        <div className="ml-auto flex items-center gap-2 px-2 bg-gray-800">
+        <div className="ml-auto flex items-center gap-2 px-3" style={{ background: 'var(--panel-elevated)' }}>
           <button
             onClick={() => setIsPlayMode(!isPlayMode)}
             tabIndex={-1}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded text-white text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-5 py-2 rounded text-sm font-semibold tracking-wide transition-all glow-hover ${
               isPlayMode
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-green-600 hover:bg-green-700"
+                ? "neon-text-pink"
+                : "neon-text-green"
             }`}
+            style={{
+              background: isPlayMode ? 'rgba(255, 0, 170, 0.1)' : 'rgba(57, 255, 20, 0.1)',
+              border: isPlayMode ? '1px solid var(--pink-neon)' : '1px solid var(--neon-green)',
+              fontFamily: 'var(--font-display)'
+            }}
             title={isPlayMode ? "Stop Playing" : "Play in Viewport"}
           >
             {isPlayMode ? (
@@ -588,7 +593,14 @@ export default function EditorPage() {
           </button>
           <button
             onClick={handlePlayGame}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded text-sm font-semibold tracking-wide transition-all glow-hover"
+            style={{
+              background: 'rgba(0, 85, 255, 0.1)',
+              border: '1px solid var(--electric-blue)',
+              color: 'var(--electric-blue)',
+              fontFamily: 'var(--font-display)',
+              textShadow: '0 0 10px var(--electric-glow)'
+            }}
             title="Play in Fullscreen"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -601,28 +613,40 @@ export default function EditorPage() {
       {/* Main Editor Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Scene Hierarchy & Prefabs */}
-        <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
+        <div className="w-64 cyber-panel flex flex-col" style={{ borderRight: '1px solid var(--ui-border-bright)' }}>
           {/* Tab Navigation */}
-          <div className="flex border-b border-gray-700">
+          <div className="flex" style={{ borderBottom: '1px solid var(--ui-border)' }}>
             <button
               onClick={() => setLeftPanelTab("hierarchy")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 text-sm font-semibold tracking-wide transition-all ${
                 leftPanelTab === "hierarchy"
-                  ? "bg-gray-700 text-white border-b-2 border-blue-500"
-                  : "text-gray-400 hover:text-white hover:bg-gray-750"
+                  ? "neon-text"
+                  : ""
               }`}
+              style={{
+                background: leftPanelTab === "hierarchy" ? 'var(--panel-elevated)' : 'transparent',
+                color: leftPanelTab === "hierarchy" ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+                borderBottom: leftPanelTab === "hierarchy" ? '2px solid var(--cyan-neon)' : '2px solid transparent',
+                fontFamily: 'var(--font-display)'
+              }}
             >
-              Hierarchy
+              HIERARCHY
             </button>
             <button
               onClick={() => setLeftPanelTab("prefabs")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 text-sm font-semibold tracking-wide transition-all ${
                 leftPanelTab === "prefabs"
-                  ? "bg-gray-700 text-white border-b-2 border-blue-500"
-                  : "text-gray-400 hover:text-white hover:bg-gray-750"
+                  ? "neon-text"
+                  : ""
               }`}
+              style={{
+                background: leftPanelTab === "prefabs" ? 'var(--panel-elevated)' : 'transparent',
+                color: leftPanelTab === "prefabs" ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+                borderBottom: leftPanelTab === "prefabs" ? '2px solid var(--cyan-neon)' : '2px solid transparent',
+                fontFamily: 'var(--font-display)'
+              }}
             >
-              Prefabs ({prefabs.length})
+              PREFABS ({prefabs.length})
             </button>
           </div>
 
@@ -647,8 +671,8 @@ export default function EditorPage() {
         </div>
 
         {/* Center - 3D Viewport */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 relative">
+        <div className="flex-1 flex flex-col" style={{ overflow: 'hidden' }}>
+          <div className="flex-1 relative" style={{ overflow: 'hidden' }}>
             <Viewport3D
               gameObjects={gameObjects}
               scripts={scripts}
@@ -661,7 +685,7 @@ export default function EditorPage() {
           </div>
 
           {/* Bottom Panel - Script Editor */}
-          <div className="h-80 bg-gray-800 border-t border-gray-700">
+          <div className="h-80 cyber-panel" style={{ borderTop: '1px solid var(--ui-border-bright)' }}>
             <ScriptEditor
               scripts={scripts}
               selectedScriptId={selectedScriptId}
@@ -675,9 +699,9 @@ export default function EditorPage() {
         </div>
 
         {/* Right Panel - Inspector */}
-        <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-lg font-semibold">Inspector</h2>
+        <div className="w-80 cyber-panel flex flex-col" style={{ borderLeft: '1px solid var(--ui-border-bright)' }}>
+          <div className="p-4" style={{ borderBottom: '1px solid var(--ui-border)' }}>
+            <h2 className="text-xl font-bold tracking-wide neon-text" style={{ fontFamily: 'var(--font-display)' }}>INSPECTOR</h2>
           </div>
           <div className="flex-1 overflow-y-auto">
             <Inspector
@@ -691,37 +715,58 @@ export default function EditorPage() {
 
       {/* Save Dialog */}
       {showSaveDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-96 border border-gray-700">
-            <h3 className="text-xl font-semibold mb-4">Save Project</h3>
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(5, 5, 16, 0.9)', backdropFilter: 'blur(10px)' }}>
+          <div className="cyber-panel-elevated rounded-lg p-6 w-96 cyber-border">
+            <h3 className="text-2xl font-bold mb-6 neon-text" style={{ fontFamily: 'var(--font-display)' }}>SAVE PROJECT</h3>
             <input
               type="text"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder="Enter project name"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white mb-4 focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 rounded mb-6 focus:outline-none transition-all"
+              style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--ui-border)',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-ui)'
+              }}
+              onFocus={(e) => e.target.style.border = '1px solid var(--cyan-neon)'}
+              onBlur={(e) => e.target.style.border = '1px solid var(--ui-border)'}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSaveProject();
                 if (e.key === "Escape") setShowSaveDialog(false);
               }}
               autoFocus
             />
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
                   setShowSaveDialog(false);
                   setProjectName("");
                 }}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+                className="px-6 py-2 rounded font-semibold tracking-wide transition-all"
+                style={{
+                  background: 'var(--panel-bg)',
+                  border: '1px solid var(--ui-border)',
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-display)'
+                }}
               >
-                Cancel
+                CANCEL
               </button>
               <button
                 onClick={handleSaveProject}
                 disabled={!projectName.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-white transition-colors"
+                className="px-6 py-2 rounded font-semibold tracking-wide transition-all glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  background: 'rgba(0, 229, 255, 0.15)',
+                  border: '1px solid var(--cyan-neon)',
+                  color: 'var(--cyan-neon)',
+                  textShadow: '0 0 10px var(--cyan-glow)',
+                  fontFamily: 'var(--font-display)'
+                }}
               >
-                Save
+                SAVE
               </button>
             </div>
           </div>
@@ -730,24 +775,28 @@ export default function EditorPage() {
 
       {/* Template Selection Dialog */}
       {showTemplateDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-[800px] max-w-[90vw] border border-gray-700">
-            <h3 className="text-xl font-semibold mb-4">テンプレートを選択</h3>
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(5, 5, 16, 0.9)', backdropFilter: 'blur(10px)' }}>
+          <div className="cyber-panel-elevated rounded-lg p-8 w-[800px] max-w-[90vw] cyber-border">
+            <h3 className="text-2xl font-bold mb-6 neon-text" style={{ fontFamily: 'var(--font-display)' }}>SELECT TEMPLATE</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {gameTemplates.map((template) => (
                 <button
                   key={template.id}
                   onClick={() => handleSelectTemplate(template)}
-                  className="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 text-left transition-colors border-2 border-transparent hover:border-blue-500"
+                  className="rounded-lg p-5 text-left transition-all cyber-border glow-hover"
+                  style={{
+                    background: 'var(--panel-bg)',
+                    border: '1px solid var(--ui-border)'
+                  }}
                 >
-                  <div className="aspect-video bg-gray-900 rounded mb-3 flex items-center justify-center">
+                  <div className="aspect-video rounded mb-3 flex items-center justify-center" style={{ background: 'var(--void-black)' }}>
                     {template.id === "basic-platform" && (
                       <svg
                         width="48"
                         height="48"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="text-green-500"
+                        style={{ color: 'var(--neon-green)' }}
                       >
                         <rect x="4" y="18" width="16" height="2" />
                         <rect x="8" y="14" width="8" height="2" />
@@ -760,7 +809,7 @@ export default function EditorPage() {
                         height="48"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="text-red-500"
+                        style={{ color: 'var(--pink-neon)' }}
                       >
                         <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
                         <circle cx="12" cy="12" r="3" fill="white" />
@@ -772,7 +821,7 @@ export default function EditorPage() {
                         height="48"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="text-blue-500"
+                        style={{ color: 'var(--electric-blue)' }}
                       >
                         {/* Ground */}
                         <rect x="2" y="19" width="20" height="2" />
@@ -794,7 +843,7 @@ export default function EditorPage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
-                        className="text-gray-500"
+                        style={{ color: 'var(--text-muted)' }}
                       >
                         <rect
                           x="3"
@@ -809,10 +858,10 @@ export default function EditorPage() {
                       </svg>
                     )}
                   </div>
-                  <h4 className="font-semibold text-lg mb-1">
-                    {template.name}
+                  <h4 className="font-bold text-lg mb-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', letterSpacing: '0.05em' }}>
+                    {template.name.toUpperCase()}
                   </h4>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {template.description}
                   </p>
                 </button>
@@ -821,9 +870,15 @@ export default function EditorPage() {
             <div className="flex justify-end">
               <button
                 onClick={() => setShowTemplateDialog(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+                className="px-6 py-2 rounded font-semibold tracking-wide transition-all"
+                style={{
+                  background: 'var(--panel-bg)',
+                  border: '1px solid var(--ui-border)',
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-display)'
+                }}
               >
-                キャンセル
+                CANCEL
               </button>
             </div>
           </div>
@@ -832,53 +887,82 @@ export default function EditorPage() {
 
       {/* Create Prefab Dialog */}
       {showCreatePrefabDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-96 border border-gray-700">
-            <h3 className="text-xl font-semibold mb-4">Create Prefab</h3>
-            <div className="space-y-4 mb-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(5, 5, 16, 0.9)', backdropFilter: 'blur(10px)' }}>
+          <div className="cyber-panel-elevated rounded-lg p-6 w-96 cyber-border">
+            <h3 className="text-2xl font-bold mb-6 neon-text-green" style={{ fontFamily: 'var(--font-display)' }}>CREATE PREFAB</h3>
+            <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Prefab Name
+                <label className="block text-sm font-semibold mb-2 tracking-wide" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
+                  PREFAB NAME
                 </label>
                 <input
                   type="text"
                   value={prefabName}
                   onChange={(e) => setPrefabName(e.target.value)}
                   placeholder="Enter prefab name"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 rounded focus:outline-none transition-all"
+                  style={{
+                    background: 'var(--panel-bg)',
+                    border: '1px solid var(--ui-border)',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-ui)'
+                  }}
+                  onFocus={(e) => e.target.style.border = '1px solid var(--neon-green)'}
+                  onBlur={(e) => e.target.style.border = '1px solid var(--ui-border)'}
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Description (optional)
+                <label className="block text-sm font-semibold mb-2 tracking-wide" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
+                  DESCRIPTION (OPTIONAL)
                 </label>
                 <textarea
                   value={prefabDescription}
                   onChange={(e) => setPrefabDescription(e.target.value)}
                   placeholder="Enter description"
                   rows={3}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full px-4 py-3 rounded focus:outline-none resize-none transition-all"
+                  style={{
+                    background: 'var(--panel-bg)',
+                    border: '1px solid var(--ui-border)',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-ui)'
+                  }}
+                  onFocus={(e) => e.target.style.border = '1px solid var(--neon-green)'}
+                  onBlur={(e) => e.target.style.border = '1px solid var(--ui-border)'}
                 />
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
                   setShowCreatePrefabDialog(false);
                   setPrefabName("");
                   setPrefabDescription("");
                 }}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+                className="px-6 py-2 rounded font-semibold tracking-wide transition-all"
+                style={{
+                  background: 'var(--panel-bg)',
+                  border: '1px solid var(--ui-border)',
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-display)'
+                }}
               >
-                Cancel
+                CANCEL
               </button>
               <button
                 onClick={handleConfirmCreatePrefab}
                 disabled={!prefabName.trim()}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-white transition-colors"
+                className="px-6 py-2 rounded font-semibold tracking-wide transition-all glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  background: 'rgba(57, 255, 20, 0.15)',
+                  border: '1px solid var(--neon-green)',
+                  color: 'var(--neon-green)',
+                  textShadow: '0 0 10px var(--green-glow)',
+                  fontFamily: 'var(--font-display)'
+                }}
               >
-                Create
+                CREATE
               </button>
             </div>
           </div>
@@ -887,12 +971,12 @@ export default function EditorPage() {
 
       {/* Load Dialog */}
       {showLoadDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-96 border border-gray-700">
-            <h3 className="text-xl font-semibold mb-4">Load Project</h3>
-            <div className="max-h-96 overflow-y-auto mb-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(5, 5, 16, 0.9)', backdropFilter: 'blur(10px)' }}>
+          <div className="cyber-panel-elevated rounded-lg p-6 w-96 cyber-border">
+            <h3 className="text-2xl font-bold mb-6 neon-text" style={{ fontFamily: 'var(--font-display)' }}>LOAD PROJECT</h3>
+            <div className="max-h-96 overflow-y-auto mb-6">
               {loadProjectList().length === 0 ? (
-                <p className="text-gray-400 text-center py-8">
+                <p className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
                   No saved projects
                 </p>
               ) : (
@@ -900,20 +984,27 @@ export default function EditorPage() {
                   {loadProjectList().map((project) => (
                     <div
                       key={project.id}
-                      className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                      className="flex items-center gap-2 rounded transition-all cyber-border glow-hover"
+                      style={{
+                        background: 'var(--panel-bg)',
+                        border: '1px solid var(--ui-border)'
+                      }}
                     >
                       <button
                         onClick={() => handleLoadProject(project.id)}
                         className="flex-1 text-left px-4 py-3"
                       >
-                        <div className="font-medium">{project.name}</div>
-                        <div className="text-sm text-gray-400">
+                        <div className="font-semibold tracking-wide" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{project.name}</div>
+                        <div className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                           {new Date(project.updatedAt).toLocaleString()}
                         </div>
                       </button>
                       <button
                         onClick={(e) => handleDeleteProject(project.id, e)}
-                        className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+                        className="px-3 py-2 rounded transition-all"
+                        style={{ color: 'var(--danger)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 0, 85, 0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         title="Delete Project"
                       >
                         <svg
@@ -937,9 +1028,15 @@ export default function EditorPage() {
             <div className="flex justify-end">
               <button
                 onClick={() => setShowLoadDialog(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors"
+                className="px-6 py-2 rounded font-semibold tracking-wide transition-all"
+                style={{
+                  background: 'var(--panel-bg)',
+                  border: '1px solid var(--ui-border)',
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-display)'
+                }}
               >
-                Cancel
+                CANCEL
               </button>
             </div>
           </div>

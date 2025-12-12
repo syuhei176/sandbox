@@ -60,18 +60,26 @@ end`;
   return (
     <div className="h-full flex flex-col">
       {/* Script Tabs */}
-      <div className="flex items-center gap-1 px-2 py-1 bg-gray-900 border-b border-gray-700 overflow-x-auto">
+      <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto" style={{ background: 'var(--panel-elevated)', borderBottom: '1px solid var(--ui-border)' }}>
         {scripts.map((script) => (
           <div
             key={script.id}
             className={`
-              flex items-center gap-1 px-3 py-1 text-sm rounded-t transition-colors group
+              flex items-center gap-2 px-4 py-2 text-sm rounded-t transition-all group
               ${
                 script.id === selectedScriptId
-                  ? "bg-gray-800 text-white"
-                  : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                  ? "cyber-border"
+                  : ""
               }
             `}
+            style={{
+              background: script.id === selectedScriptId ? 'var(--panel-bg)' : 'rgba(255, 255, 255, 0.03)',
+              color: script.id === selectedScriptId ? 'var(--cyan-neon)' : 'var(--text-secondary)',
+              border: script.id === selectedScriptId ? '1px solid var(--cyan-neon)' : '1px solid var(--ui-border)',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '0.05em',
+              fontWeight: 600
+            }}
           >
             <button
               onClick={() => onScriptSelect(script.id)}
@@ -83,7 +91,8 @@ end`;
             </button>
             <button
               onClick={(e) => handleDeleteScript(script.id, e)}
-              className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 ml-1"
+              className="opacity-0 group-hover:opacity-100 transition-all"
+              style={{ color: 'var(--danger)' }}
               title="Delete Script"
             >
               ✕
@@ -92,42 +101,49 @@ end`;
         ))}
         <button
           onClick={handleAddScript}
-          className="px-2 py-1 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors"
+          className="px-3 py-2 text-sm rounded transition-all font-bold tracking-wider glow-hover"
+          style={{
+            background: 'rgba(57, 255, 20, 0.15)',
+            border: '1px solid var(--neon-green)',
+            color: 'var(--neon-green)',
+            fontFamily: 'var(--font-display)'
+          }}
           title="Add New Script"
         >
-          +
+          + NEW
         </button>
       </div>
 
       {/* Code Editor */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" style={{ background: 'var(--panel-bg)' }}>
         {selectedScript ? (
           <CodeEditor
             value={selectedScript.lua_code}
             language="lua"
             placeholder="-- Write your Lua script here"
             onChange={(e) => onScriptUpdate(selectedScript.id, e.target.value)}
-            padding={15}
+            padding={20}
             style={{
-              fontSize: 13,
-              backgroundColor: "#1f2937",
-              fontFamily:
-                "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+              fontSize: 14,
+              backgroundColor: "var(--panel-bg)",
+              fontFamily: "var(--font-code)",
               minHeight: "100%",
+              color: "var(--text-primary)",
+              lineHeight: "1.6"
             }}
             className="w-full"
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Select a script to edit
+          <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+            SELECT A SCRIPT TO EDIT
           </div>
         )}
       </div>
 
       {/* Script Info Footer */}
       {selectedScript && (
-        <div className="px-3 py-1 bg-gray-900 border-t border-gray-700 text-xs text-gray-400">
-          Script: {selectedScript.name} ({selectedScript.id})
+        <div className="px-4 py-2 text-xs" style={{ background: 'var(--panel-elevated)', borderTop: '1px solid var(--ui-border)', color: 'var(--text-muted)', fontFamily: 'var(--font-code)' }}>
+          <span style={{ color: 'var(--cyan-neon)' }}>SCRIPT:</span> {selectedScript.name} <span style={{ color: 'var(--text-muted)', marginLeft: '1rem' }}>({selectedScript.id})</span>
         </div>
       )}
     </div>
