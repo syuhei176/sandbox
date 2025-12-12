@@ -58,10 +58,128 @@ Games are defined by a `GameSpec` object containing:
 
 GameObjects have a component-based architecture. Currently supported component types:
 
-- `mesh` - Visual geometry (box, sphere, plane, cylinder) with material properties
+- `mesh` - Visual geometry (box, sphere, plane, cylinder, custom_model) with material properties
 - `light` - Lighting (point, spot, directional)
 - `camera` - Camera with FOV, aspect, near/far settings
 - `collider`, `rigidbody`, `audio_source`, `particle_system` (defined but not yet implemented)
+
+### 3D Model and Animation Support
+
+#### Loading 3D Models
+
+The platform supports loading custom 3D models in GLTF/GLB format through the `custom_model` geometry type:
+
+```typescript
+{
+  type: "mesh",
+  properties: {
+    geometry: "custom_model",
+
+    // Model loading (choose one):
+    model_url: "https://example.com/character.glb",  // Load from URL
+    model_id: "model-123",                            // Load from IndexedDB
+    model_data: "data:application/octet-stream;..."  // Inline base64 data
+  }
+}
+```
+
+#### Animation System
+
+Models with embedded animations are automatically detected and managed by the engine. Animation configuration properties:
+
+```typescript
+{
+  type: "mesh",
+  properties: {
+    geometry: "custom_model",
+    model_url: "https://example.com/animated-character.glb",
+
+    // Animation configuration:
+    autoPlayAnimation: true,      // Auto-play on load (default: true)
+    defaultAnimation: "Idle",     // Clip name to play on start (default: first clip)
+    animationLoop: true,          // Loop playback (default: true)
+    animationSpeed: 1.0          // Playback speed multiplier (default: 1.0)
+  }
+}
+```
+
+**Lua Animation API**:
+
+Animated GameObjects have access to an `animation` global table and control functions:
+
+```lua
+-- Read-only state table (updated each frame):
+animation.clips        -- Array of available clip names: {"Walk", "Run", "Idle"}
+animation.current      -- Currently playing clip name (or nil)
+animation.time         -- Current playback time in seconds
+animation.duration     -- Duration of current clip
+animation.is_playing   -- Boolean playback state
+animation.loop         -- Current loop mode
+animation.speed        -- Current playback speed
+
+-- Control functions:
+play_animation("Walk")
+play_animation("Attack", {loop = false, speed = 1.5, fadeTime = 0.3})
+pause_animation()
+resume_animation()
+stop_animation()
+set_animation_speed(2.0)
+set_animation_time(1.5)  -- Seek to specific time
+
+-- Lifecycle hook:
+function on_animation_complete(clip_name)
+  -- Called when non-looping animation finishes
+  if clip_name == "Attack" then
+    play_animation("Idle")
+  end
+end
+```
+
+**Example - Character with Animation State Machine**:
+
+```lua
+local state = "idle"
+local detection_range = 15
+
+function on_start()
+  if animation and animation.clips then
+    print("Available animations:", table.concat(animation.clips, ", "))
+    play_animation("Idle")
+  end
+end
+
+function on_update(dt)
+  local player = find_gameobject("Player")
+  if not player then return end
+
+  local distance = calculate_distance(player)
+
+  if distance < 3 then
+    if state ~= "attack" then
+      state = "attack"
+      play_animation("Attack", {loop = false})
+    end
+  elseif distance < detection_range then
+    if state ~= "chase" then
+      state = "chase"
+      play_animation("Run", {loop = true, speed = 1.2})
+    end
+    move_towards_player(player, dt)
+  else
+    if state ~= "idle" then
+      state = "idle"
+      play_animation("Idle")
+    end
+  end
+end
+
+function on_animation_complete(clip_name)
+  if clip_name == "Attack" then
+    state = "idle"
+    play_animation("Idle")
+  end
+end
+```
 
 ### Lua Script Lifecycle
 
