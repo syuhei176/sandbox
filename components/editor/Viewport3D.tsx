@@ -44,13 +44,13 @@ function TransformControlsWrapper({
   onObjectChange?: () => void;
   onTransformingChange?: (transforming: boolean) => void;
 }) {
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<typeof TransformControls.prototype | null>(null);
 
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
-    const callback = (event: any) => {
+    const callback = (event: { value: boolean }) => {
       onTransformingChange?.(event.value);
     };
 
@@ -149,7 +149,7 @@ export function Viewport3D({
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
-  const orbitControlsRef = useRef<any>(null);
+  const orbitControlsRef = useRef<typeof OrbitControls.prototype | null>(null);
 
   // Handle drop events
   const handleDragOver = useCallback(
@@ -166,7 +166,7 @@ export function Viewport3D({
   );
 
   const handleDragLeave = useCallback(
-    (e: React.DragEvent) => {
+    () => {
       if (isPlayMode) return;
       setIsDragOver(false);
     },

@@ -390,7 +390,7 @@ end
     return null;
   }
 
-  loadScript(scriptCode: string, scriptId: string): boolean {
+  loadScript(scriptCode: string): boolean {
     if (!this.L) {
       console.error("LuaVM not initialized");
       return false;

@@ -46,13 +46,13 @@ vi.mock("three", async () => {
       this.time = 0;
       return this;
     }
-    setLoop(_loop: number) {
+    setLoop() {
       return this;
     }
-    fadeIn(_duration: number) {
+    fadeIn() {
       return this;
     }
-    fadeOut(_duration: number) {
+    fadeOut() {
       return this;
     }
     getClip() {
@@ -72,7 +72,7 @@ vi.mock("three", async () => {
 // Mock GLTFLoader
 vi.mock("three/examples/jsm/loaders/GLTFLoader.js", () => ({
   GLTFLoader: class MockGLTFLoader {
-    async loadAsync(_url: string) {
+    async loadAsync() {
       // Return mock GLTF with animations
       return {
         scene: {

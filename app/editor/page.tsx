@@ -36,7 +36,6 @@ import {
 } from "@/lib/defaults/default-game";
 import {
   gameTemplates,
-  getTemplateById,
   type GameTemplate,
 } from "@/lib/templates";
 
@@ -135,6 +134,8 @@ export default function EditorPage() {
     selectedObjectId,
     selectedScriptId,
     currentProjectId,
+    currentProjectName,
+    prefabs,
   ]);
 
   const selectedObject = gameObjects.find((obj) => obj.id === selectedObjectId);
