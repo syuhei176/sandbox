@@ -10,7 +10,7 @@
     "build": "vite build",
     "build:worker": "wrangler deploy --config worker/wrangler.toml --dry-run",
     "deploy": "pnpm run deploy:client && pnpm run deploy:worker",
-    "deploy:client": "pnpm run build && wrangler pages deploy dist/client --project-name=sandbox",
+    "deploy:client": "pnpm run build && wrangler pages deploy dist/client --project-name=sandbox-page",
     "deploy:worker": "wrangler deploy --config worker/wrangler.toml",
     "lint": "eslint",
     "test": "vitest",
