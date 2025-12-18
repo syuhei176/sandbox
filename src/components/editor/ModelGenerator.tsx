@@ -1,4 +1,3 @@
-"use client";
 
 import { useState } from "react";
 import { modelStorage } from "@/lib/utils/model-storage";

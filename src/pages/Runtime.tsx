@@ -1,7 +1,5 @@
-"use client";
-
 import { useRef, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { GameEngine } from "@/lib/runtime/game-engine";
 import type { GameSpec } from "@/lib/types/gamespec";
 import {
@@ -44,7 +42,7 @@ const sampleGameSpec: GameSpec = {
 };
 
 export default function RuntimePage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -161,7 +159,7 @@ export default function RuntimePage() {
       {/* Top Bar with Back Button and Game Info */}
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
         <button
-          onClick={() => router.push("/editor")}
+          onClick={() => navigate("/editor")}
           className="flex items-center gap-2 px-4 py-2 bg-gray-800 bg-opacity-75 hover:bg-opacity-100 text-white rounded transition-all"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
