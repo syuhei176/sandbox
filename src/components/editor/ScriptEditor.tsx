@@ -1,4 +1,3 @@
-"use client";
 
 import CodeEditor from "@uiw/react-textarea-code-editor";
 import type { ScriptDefinition } from "@/lib/types/gamespec";

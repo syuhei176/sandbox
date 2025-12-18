@@ -1,10 +1,8 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [glitchActive, setGlitchActive] = useState(false);
   const [typedText, setTypedText] = useState("");
   const fullText = "Create 3D games with natural language_";
@@ -33,7 +31,7 @@ export default function Home() {
 
   return (
     <>
-      <style jsx>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap');
 
         .page-container {
@@ -308,14 +306,14 @@ export default function Home() {
           </p>
 
           <button
-            onClick={() => router.push("/editor")}
+            onClick={() => navigate("/editor")}
             className="btn-primary"
           >
             &gt; Launch Editor
           </button>
 
           <button
-            onClick={() => router.push("/runtime")}
+            onClick={() => navigate("/runtime")}
             className="btn-secondary"
           >
             View Runtime Demo
