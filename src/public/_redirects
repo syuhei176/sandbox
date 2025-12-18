@@ -1,6 +1,0 @@
-# API routes proxy to Cloudflare Worker
-# Replace YOUR_WORKER_URL with your actual worker URL (e.g., ai-game-platform-api.your-subdomain.workers.dev)
-/api/*  https://YOUR_WORKER_URL/api/:splat  200
-
-# SPA fallback - all other routes serve index.html
-/*      /index.html  200

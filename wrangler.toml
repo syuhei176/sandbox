@@ -1,0 +1,11 @@
+name = "sandbox"
+main = "src/worker/index.ts"
+compatibility_date = "2024-12-01"
+
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[observability]
+enabled = true

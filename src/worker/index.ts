@@ -1,15 +1,12 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 
 // Cloudflare Workers environment bindings
 type Bindings = {
   MESHY_API_KEY: string;
+  ASSETS: Fetcher;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
-
-// CORS for development
-app.use("/*", cors());
 
 // Health check endpoint
 app.get("/api/health", (c) => {
