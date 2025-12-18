@@ -9,6 +9,7 @@
 - [ ] **型定義の更新** (`lib/types/gamespec.ts`)
   - [ ] `CameraProperties`に`usePointerLock?: boolean`を追加
 
+
 - [ ] **ゲームエンジンの修正** (`lib/runtime/game-engine.ts`)
   - [ ] キャンバスフォーカス管理の追加（`tabIndex`, `focus()`）
   - [ ] キーボード状態の初期化メソッド追加
