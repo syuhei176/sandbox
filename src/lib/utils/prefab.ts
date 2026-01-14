@@ -43,22 +43,6 @@ export function instantiatePrefab(prefab: PrefabDefinition): GameObject {
 }
 
 /**
- * Updates a prefab with a new GameObject template
- */
-export function updatePrefab(
-  prefab: PrefabDefinition,
-  gameObject: GameObject,
-): PrefabDefinition {
-  const template = cloneGameObjectForPrefab(gameObject);
-
-  return {
-    ...prefab,
-    template,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-/**
  * Clones a GameObject and removes instance-specific data for prefab storage
  */
 function cloneGameObjectForPrefab(gameObject: GameObject): GameObject {
@@ -98,33 +82,4 @@ function regenerateGameObjectIds(
   }
 
   return updated;
-}
-
-/**
- * Checks if a GameObject is an instance of a prefab
- */
-export function isPrefabInstance(gameObject: GameObject): boolean {
-  return !!gameObject.prefab_id;
-}
-
-/**
- * Finds all instances of a specific prefab in a GameObject array
- */
-export function findPrefabInstances(
-  gameObjects: GameObject[],
-  prefabId: string,
-): GameObject[] {
-  const instances: GameObject[] = [];
-
-  function traverse(obj: GameObject) {
-    if (obj.prefab_id === prefabId) {
-      instances.push(obj);
-    }
-    if (obj.children) {
-      obj.children.forEach(traverse);
-    }
-  }
-
-  gameObjects.forEach(traverse);
-  return instances;
 }

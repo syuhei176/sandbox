@@ -40,31 +40,6 @@ export function saveEditorState(state: EditorState): void {
 }
 
 /**
- * Load editor state from localStorage
- */
-export function loadEditorState(): EditorState | null {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEYS.AUTOSAVE);
-    if (!saved) return null;
-    return JSON.parse(saved);
-  } catch (error) {
-    console.error("Failed to load editor state:", error);
-    return null;
-  }
-}
-
-/**
- * Clear autosaved editor state
- */
-export function clearEditorState(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEYS.AUTOSAVE);
-  } catch (error) {
-    console.error("Failed to clear editor state:", error);
-  }
-}
-
-/**
  * Save a project
  */
 export function saveProject(project: Project): void {
